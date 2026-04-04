@@ -1,0 +1,52 @@
+diff --git a/node_modules/react-native-screens/ios/gamma/split-view/RNSSplitViewHostController.swift b/node_modules/react-native-screens/ios/gamma/split-view/RNSSplitViewHostController.swift
+index a37ac1f..dd150e5 100644
+--- a/node_modules/react-native-screens/ios/gamma/split-view/RNSSplitViewHostController.swift
++++ b/node_modules/react-native-screens/ios/gamma/split-view/RNSSplitViewHostController.swift
+@@ -399,44 +399,15 @@ extension RNSSplitViewHostController: RNSSplitViewNavigationControllerViewFrameO
+     /// @param inspectors An array of inspector-type RNSSplitViewScreenComponentView subviews.
+     ///
+     func maybeSetupInspector(_ inspectors: [RNSSplitViewScreenComponentView]) {
+-      #if !os(tvOS)
+-        if #available(iOS 26.0, *) {
+-          let inspector = inspectors.first
+-          if inspector != nil {
+-            let inspectorViewController = RNSSplitViewNavigationController(
+-              rootViewController: inspector!.controller)
+-            setViewController(inspectorViewController, for: .inspector)
+-          }
+-        }
+-      #endif
++      // Inspector column requires iOS 26+ SDK
+     }
+ 
+-    ///
+-    /// @brief Shows the inspector column when available.
+-    /// @remarks Inspector columns is available only on iOS 26 or higher.
+-    ///
+-    /// Uses the UISplitViewController's new API introduced in iOS 26 to show the inspector column.
+-    ///
+     func maybeShowInspector() {
+-      #if !os(tvOS)
+-        if #available(iOS 26.0, *) {
+-          show(.inspector)
+-        }
+-      #endif
++      // Inspector column requires iOS 26+ SDK
+     }
+ 
+-    ///
+-    /// @brief Hides the inspector column when available.
+-    /// @remarks Inspector columns is available only on iOS 26 or higher.
+-    ///
+-    /// Uses the UISplitViewController's new API introduced in iOS 26 to hide the inspector column.
+-    ///
+     func maybeHideInspector() {
+-      #if !os(tvOS)
+-        if #available(iOS 26.0, *) {
+-          hide(.inspector)
+-        }
+-      #endif
++      // Inspector column requires iOS 26+ SDK
+     }
+   }
+ #endif

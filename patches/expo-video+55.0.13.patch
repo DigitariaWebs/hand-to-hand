@@ -1,0 +1,30 @@
+diff --git a/node_modules/expo-video/ios/VideoPlayerItem.swift b/node_modules/expo-video/ios/VideoPlayerItem.swift
+index c3d3394..e8792b0 100644
+--- a/node_modules/expo-video/ios/VideoPlayerItem.swift
++++ b/node_modules/expo-video/ios/VideoPlayerItem.swift
+@@ -78,25 +78,9 @@ class VideoPlayerItem: AVPlayerItem {
+   // MARK: - HLS Helpers
+ 
+   private func loadHlsTracks(mainUrl: URL) async -> [VideoTrack] {
+-    if #available(iOS 26.0, tvOS 26, *) {
+-      return await loadModernHlsTracks(mainUrl: mainUrl)
+-    }
+-
+     return await loadLegacyHlsTracks()
+   }
+ 
+-  @available(iOS 26.0, tvOS 26, *)
+-  private func loadModernHlsTracks(mainUrl: URL) async -> [VideoTrack] {
+-    guard let variants = try? await urlAsset.load(.variants) else {
+-      return []
+-    }
+-    let isPlayable = (try? await urlAsset.load(.isPlayable)) ?? false
+-
+-    return variants.compactMap { variant in
+-      VideoTrack.from(assetVariant: variant, isPlayable: isPlayable, mainUrl: mainUrl)
+-    }
+-  }
+-
+   private func loadLegacyHlsTracks() async -> [VideoTrack] {
+     do {
+       return try await self.fetchHlsVideoTracks()
