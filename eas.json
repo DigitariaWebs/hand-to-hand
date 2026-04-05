@@ -1,0 +1,36 @@
+{
+  "cli": {
+    "version": ">= 18.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal",
+      "ios": {
+        "simulator": false
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": {
+        "EXPO_USE_PRECOMPILED_MODULES": "0"
+      },
+      "ios": {
+        "buildConfiguration": "Release",
+        "image": "macos-sequoia-15.6-xcode-16.4"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleTeamId": "89884BGNZR",
+        "ascAppId": "6761655944"
+      }
+    }
+  }
+}
