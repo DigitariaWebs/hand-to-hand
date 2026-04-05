@@ -1,3 +1,39 @@
+diff --git a/node_modules/expo-video/ios/Records/Tracks.swift b/node_modules/expo-video/ios/Records/Tracks.swift
+index 488f12b..54e221f 100644
+--- a/node_modules/expo-video/ios/Records/Tracks.swift
++++ b/node_modules/expo-video/ios/Records/Tracks.swift
+@@ -111,6 +111,7 @@ internal struct VideoTrack: Record, Equatable {
+     )
+   }
+ 
++  #if compiler(>=6.2)
+   @available(iOS 26, tvOS 26, *)
+   static func from(assetVariant: AVAssetVariant, isPlayable: Bool, mainUrl: URL) -> VideoTrack? {
+     guard let videoAttributes = assetVariant.videoAttributes else {
+@@ -138,6 +139,7 @@ internal struct VideoTrack: Record, Equatable {
+       frameRate: safeFrameRate
+     )
+   }
++  #endif
+ 
+   static func from(hlsHeaderLine: String, idLine: String, mainUrl: URL) -> VideoTrack? {
+     // The minimum information we require from a video track is it's resolution
+diff --git a/node_modules/expo-video/ios/Utils/AVAssetVariant+VideoTracks.swift b/node_modules/expo-video/ios/Utils/AVAssetVariant+VideoTracks.swift
+index 6b89563..692afb2 100644
+--- a/node_modules/expo-video/ios/Utils/AVAssetVariant+VideoTracks.swift
++++ b/node_modules/expo-video/ios/Utils/AVAssetVariant+VideoTracks.swift
+@@ -1,5 +1,6 @@
+ import AVKit
+ 
++#if compiler(>=6.2)
+ extension AVAssetVariant.VideoAttributes {
+   var videoSize: VideoSize? {
+     guard presentationSize.width.isFinite, presentationSize.height.isFinite else {
+@@ -18,3 +19,4 @@ extension AVAssetVariant.VideoAttributes {
+     return "video/\(fourCC)"
+   }
+ }
++#endif
 diff --git a/node_modules/expo-video/ios/VideoPlayerItem.swift b/node_modules/expo-video/ios/VideoPlayerItem.swift
 index c3d3394..e8792b0 100644
 --- a/node_modules/expo-video/ios/VideoPlayerItem.swift
