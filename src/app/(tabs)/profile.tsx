@@ -28,6 +28,7 @@ import { Spacing, BorderRadius } from '@/constants/Spacing';
 import { formatPrice, formatDate, getConditionLabel } from '@/utils';
 import { currentMockUser } from '@/services/mock/users';
 import { mockProducts } from '@/services/mock/products';
+import { StatusToggle } from '@/components/logistics/StatusToggle';
 
 const { width: SW } = Dimensions.get('window');
 const TABS = ['En vente', 'Vendus', 'Favoris', 'Avis'] as const;
@@ -123,8 +124,10 @@ const MOCK_REVIEWS = [
 const QUICK_ACTIONS = [
   { icon: 'package', label: 'Mes commandes', route: '/order/ord-001', color: '#3B82F6' },
   { icon: 'truck', label: 'Mes livraisons', route: '/logistics/delivery-tracking', color: '#10B981' },
-  { icon: 'dollar-sign', label: 'Mon portefeuille', route: '/settings', color: '#8B5CF6' },
-  { icon: 'bar-chart-2', label: 'Statistiques', route: '/settings', color: '#F59E0B' },
+  { icon: 'clipboard', label: 'Historique livraisons', route: '/logistics/delivery-history', color: '#F59E0B' },
+  { icon: 'dollar-sign', label: 'Mon portefeuille', route: '/settings/wallet', color: '#8B5CF6' },
+  { icon: 'star', label: 'Transporteurs favoris', route: '/settings/favorite-transporters', color: '#F59E0B' },
+  { icon: 'bar-chart-2', label: 'Statistiques', route: '/stats', color: '#6B7280' },
 ] as const;
 
 // ── Stars component ────────────────────────────────────────────────────────
@@ -175,7 +178,7 @@ function GridItem({
           </View>
         )}
         {product.stock > 1 && !overlay && (
-          <View style={styles.stockBadge}>
+          <View style={[styles.stockBadge, { backgroundColor: theme.primary }]}>
             <Text style={styles.stockBadgeText}>{product.stock}</Text>
           </View>
         )}
@@ -315,7 +318,7 @@ export default function ProfileScreen() {
                 contentFit="cover"
               />
               {user.isVerified && (
-                <View style={styles.verifiedDot}>
+                <View style={[styles.verifiedDot, { backgroundColor: theme.success }]}>
                   <Feather name="check" size={10} color="#FFF" />
                 </View>
               )}
@@ -334,9 +337,9 @@ export default function ProfileScreen() {
             {/* Badges row */}
             <View style={styles.badgesRow}>
               {user.isVerified && (
-                <View style={[styles.badge, { backgroundColor: `${Colors.light.success}15` }]}>
-                  <Feather name="check-circle" size={11} color={Colors.light.success} />
-                  <Text style={[styles.badgeText, { color: Colors.light.success }]}>Vérifié</Text>
+                <View style={[styles.badge, { backgroundColor: `${theme.success}15` }]}>
+                  <Feather name="check-circle" size={11} color={theme.success} />
+                  <Text style={[styles.badgeText, { color: theme.success }]}>Vérifié</Text>
                 </View>
               )}
               <View style={[styles.badge, { backgroundColor: '#FEF3C715' }]}>
@@ -448,6 +451,12 @@ export default function ProfileScreen() {
         >
           {renderTabContent()}
         </Animated.View>
+
+        {/* ── Transporter status ─────────────────────────────────────── */}
+        <View style={styles.quickActionsSection}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Statut transporteur</Text>
+          <StatusToggle />
+        </View>
 
         {/* ── Quick actions 2×2 grid ────────────────────────────────── */}
         <View style={styles.quickActionsSection}>

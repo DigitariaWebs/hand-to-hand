@@ -16,6 +16,7 @@ import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing, BorderRadius } from '@/constants/Spacing';
 import { useAppStore } from '@/stores/useAppStore';
+import { useLogisticsStore } from '@/stores/useLogisticsStore';
 import { currentMockUser } from '@/services/mock/users';
 
 // ── Row types ──────────────────────────────────────────────────────────────
@@ -120,12 +121,13 @@ export default function SettingsScreen() {
   const user = currentMockUser;
 
   const { isDarkMode, language, setDarkMode, setLanguage } = useAppStore();
+  const { transporterStatus, setTransporterStatus } = useLogisticsStore();
   const [langPickerVisible, setLangPickerVisible] = useState(false);
 
   const handleLogout = () => {
     Alert.alert(
       'Se déconnecter',
-      'Êtes-vous sûr de vouloir vous déconnecter de votre compte ?',
+      'Vous pourrez vous reconnecter à tout moment.',
       [
         { text: 'Annuler', style: 'cancel' },
         {
@@ -146,6 +148,7 @@ export default function SettingsScreen() {
           icon: 'camera',
           label: 'Photo de profil',
           type: 'nav',
+          onPress: () => router.push('/settings/profile-photo' as any),
         },
         {
           key: 'personal',
@@ -153,21 +156,24 @@ export default function SettingsScreen() {
           label: 'Informations personnelles',
           type: 'nav',
           value: `${user.firstName} ${user.lastName}`,
+          onPress: () => router.push('/settings/personal-info' as any),
         },
         {
           key: 'addresses',
           icon: 'map-pin',
           label: 'Adresses de livraison',
           type: 'nav',
+          onPress: () => router.push('/settings/addresses' as any),
         },
         {
           key: 'kyc',
           icon: 'shield',
-          label: 'Vérification d\'identité',
+          label: "Vérification d'identité",
           type: 'nav',
           badge: user.kycStatus === 'verified'
             ? { text: 'Vérifié', color: Colors.light.success }
             : { text: 'En attente', color: Colors.light.warning },
+          onPress: () => router.push('/settings/kyc' as any),
         },
       ],
     },
@@ -179,12 +185,22 @@ export default function SettingsScreen() {
           icon: 'credit-card',
           label: 'Moyens de paiement',
           type: 'nav',
+          onPress: () => router.push('/settings/payment-methods' as any),
+        },
+        {
+          key: 'wallet',
+          icon: 'dollar-sign',
+          iconColor: '#8B5CF6',
+          label: 'Mon portefeuille',
+          type: 'nav',
+          onPress: () => router.push('/settings/wallet' as any),
         },
         {
           key: 'transactions',
           icon: 'list',
           label: 'Historique des transactions',
           type: 'nav',
+          onPress: () => router.push('/settings/transactions' as any),
         },
       ],
     },
@@ -196,7 +212,7 @@ export default function SettingsScreen() {
           icon: 'bell',
           label: 'Préférences de notification',
           type: 'nav',
-          onPress: () => router.push('/notifications' as any),
+          onPress: () => router.push('/settings/notification-prefs' as any),
         },
       ],
     },
@@ -204,10 +220,51 @@ export default function SettingsScreen() {
       title: 'LIVRAISON',
       data: [
         {
+          key: 'transporter_status',
+          icon: transporterStatus === 'active' ? 'zap' : 'zap-off',
+          iconColor: transporterStatus === 'active' ? Colors.light.success : undefined,
+          label: 'Statut transporteur',
+          type: 'nav',
+          badge: transporterStatus === 'active'
+            ? { text: 'Actif', color: Colors.light.success }
+            : { text: 'Hors ligne', color: '#9CA3AF' },
+          onPress: () => {
+            if (transporterStatus === 'active') {
+              Alert.alert(
+                'Passer hors ligne ?',
+                'Vous ne recevrez plus de propositions de mission.',
+                [
+                  { text: 'Annuler', style: 'cancel' },
+                  { text: 'Confirmer', onPress: () => setTransporterStatus('offline') },
+                ],
+              );
+            } else {
+              setTransporterStatus('active');
+            }
+          },
+        },
+        {
           key: 'fav_hubs',
           icon: 'map-pin',
           label: 'Mes hubs favoris',
           type: 'nav',
+          onPress: () => router.push('/settings/favorite-hubs' as any),
+        },
+        {
+          key: 'fav_transporters',
+          icon: 'star',
+          iconColor: '#F59E0B',
+          label: 'Mes transporteurs favoris',
+          type: 'nav',
+          onPress: () => router.push('/settings/favorite-transporters' as any),
+        },
+        {
+          key: 'delivery_history',
+          icon: 'clipboard',
+          iconColor: '#F59E0B',
+          label: 'Historique des livraisons',
+          type: 'nav',
+          onPress: () => router.push('/logistics/delivery-history' as any),
         },
         {
           key: 'h2h_prefs',
@@ -241,18 +298,21 @@ export default function SettingsScreen() {
           label: 'À propos',
           type: 'nav',
           value: '1.0.0',
+          onPress: () => router.push('/settings/about' as any),
         },
         {
           key: 'help',
           icon: 'help-circle',
           label: 'Aide et support',
           type: 'nav',
+          onPress: () => router.push('/settings/help' as any),
         },
         {
           key: 'tos',
           icon: 'file-text',
-          label: 'Conditions d\'utilisation',
+          label: "Conditions d'utilisation",
           type: 'nav',
+          onPress: () => router.push('/settings/terms' as any),
         },
         {
           key: 'logout',

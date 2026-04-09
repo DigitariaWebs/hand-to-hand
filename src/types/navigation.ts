@@ -1,0 +1,22 @@
+export type RootStackParamList = {
+  index: undefined;
+  '(auth)/login': undefined;
+  '(auth)/signup': undefined;
+  '(auth)/otp': { phone: string };
+  '(auth)/kyc': undefined;
+  '(onboarding)/index': undefined;
+  '(tabs)/index': undefined;
+  '(tabs)/search': { query?: string; category?: string };
+  '(tabs)/sell': undefined;
+  '(tabs)/messages': undefined;
+  '(tabs)/profile': undefined;
+  'product/[id]': { id: string };
+  'auction/[id]': { id: string };
+  'checkout/[id]': { id: string };
+  'order/[id]': { id: string };
+  'logistics/publish-route': undefined;
+  'logistics/select-hub': { orderId?: string };
+  'logistics/transporter-list': { origin: string; destination: string };
+  'logistics/delivery-tracking': { shipmentId: string };
+  'boost/[id]': { id: string };
+};

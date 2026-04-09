@@ -522,7 +522,7 @@ export default function CheckoutScreen() {
           </View>
           <View style={styles.priceRow}>
             <Text style={[styles.priceLabel, { color: theme.textSecondary }]}>
-              Frais de livraison
+              {deliveryMethod === 'h2h' ? 'Frais de livraison (Hand to Hand)' : 'Frais de livraison'}
             </Text>
             <Text style={[styles.priceValue, { color: theme.text }]}>
               {deliveryFee === 0 ? 'Gratuit' : formatPrice(deliveryFee)}
@@ -751,7 +751,7 @@ export default function CheckoutScreen() {
             </Text>
           </View>
           <Text style={[styles.protectionBody, { color: theme.textSecondary }]}>
-            Votre paiement est bloqué et sécurisé jusqu'à la confirmation de réception du colis.
+            Votre paiement est sécurisé et ne sera libéré qu'après validation finale de la livraison par code OTP. Aucun transfert ne sera effectué avant votre confirmation explicite.
           </Text>
           <TouchableOpacity>
             <Text style={[styles.protectionLink, { color: theme.primary }]}>En savoir plus</Text>

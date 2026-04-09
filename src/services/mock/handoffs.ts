@@ -1,0 +1,28 @@
+import { HandoffTransaction } from '@/types/logistics';
+
+export const mockHandoffTransaction: HandoffTransaction = {
+  id: 'ht-2024-0042',
+  orderId: 'ord-7891',
+  routeId: 'r1',
+  sellerId: 'u1',
+  sellerName: 'sophie_m',
+  sellerAvatar: 'https://i.pravatar.cc/150?img=1',
+  buyerId: 'u3',
+  buyerName: 'amelie_d',
+  buyerAvatar: 'https://i.pravatar.cc/150?img=5',
+  transporterId: 'u2',
+  transporterName: 'karim_b',
+  transporterAvatar: 'https://i.pravatar.cc/150?img=3',
+  transporterVehicle: 'Renault Kangoo • AA-123-BB',
+  originHubId: 'h1',
+  destinationHubId: 'h3',
+  pickupWindowStart: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+  pickupWindowEnd: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+  status: 'pending',
+  productName: 'Veste en cuir vintage',
+  productImage: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=400&q=80',
+  price: 85.0,
+  deliveryFee: 4.5,
+  sellerQRCode: 'HTH-QR-2024-0042-SELLER',
+  buyerOTPCode: '482715',
+};

@@ -38,6 +38,8 @@ yarn-error.*
 
 app-example
 
-# generated native folders
-/ios
+# generated native folders - ios included for EAS build control
+/ios/Pods
+/ios/build
+/ios/.xcode.env.local
 /android

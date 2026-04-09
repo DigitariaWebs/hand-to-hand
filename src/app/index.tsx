@@ -1,98 +1,106 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, StyleSheet, Dimensions } from "react-native";
+import { useVideoPlayer, VideoView } from "expo-video";
+import { useEventListener } from "expo";
+import { Image } from "expo-image";
+import { useRouter } from "expo-router";
+import { useRef, useState, useEffect } from "react";
+import Animated, {
+  useSharedValue,
+  withTiming,
+  useAnimatedStyle,
+} from "react-native-reanimated";
+import { storage, StorageKeys } from "@/utils/storage";
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+const { width: W } = Dimensions.get("window");
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
+export default function SplashScreen() {
+  const router = useRouter();
+  const hasNavigated = useRef(false);
+  const [videoError, setVideoError] = useState(false);
+  const logoOpacity = useSharedValue(0);
+
+  // Destination defaults to onboarding; updated async once storage is read.
+  // SecureStore resolves in < 50 ms — well before `playToEnd` fires.
+  const destinationRef = useRef<"/(tabs)" | "/(onboarding)">("/(onboarding)");
+
+  useEffect(() => {
+    // DEV: uncomment next line to always show onboarding
+    storage.remove(StorageKeys.HAS_ONBOARDED).then(() => {});
+    storage.getBoolean(StorageKeys.HAS_ONBOARDED).then((hasOnboarded) => {
+      destinationRef.current = hasOnboarded ? "/(tabs)" : "/(onboarding)";
+    });
+  }, []);
+
+  // Called exactly once — guard prevents duplicate navigation if both events fire.
+  const navigate = () => {
+    if (hasNavigated.current) return;
+    hasNavigated.current = true;
+    router.replace(destinationRef.current);
+  };
+
+  const player = useVideoPlayer(
+    require("../../assets/videos/logo.mp4"),
+    (p) => {
+      p.loop = false;
+      p.muted = true;
+      p.playbackRate = 2.0;
+      p.play();
+    },
   );
-}
 
-export default function HomeScreen() {
+  // Video played all the way through — short pause then navigate.
+  useEventListener(player, "playToEnd", () => {
+    setTimeout(navigate, 500);
+  });
+
+  // Status changes — catch errors and show logo.png fallback.
+  useEventListener(player, "statusChange", ({ status, error }) => {
+    if (status === "error" || error) {
+      setVideoError(true);
+      logoOpacity.value = withTiming(1, { duration: 800 });
+      setTimeout(navigate, 2000);
+    }
+  });
+
+  const logoStyle = useAnimatedStyle(() => ({
+    opacity: logoOpacity.value,
+  }));
+
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
-
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
+    <View style={styles.container}>
+      {!videoError ? (
+        <VideoView
+          player={player}
+          style={styles.video}
+          contentFit="contain"
+          nativeControls={false}
+        />
+      ) : (
+        <Animated.View style={logoStyle}>
+          <Image
+            source={require("../../assets/images/logo.png")}
+            style={styles.logo}
+            contentFit="contain"
           />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+        </Animated.View>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
+  video: {
+    width: W * 0.6,
+    height: W * 0.6,
   },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
-  },
-  title: {
-    textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+  logo: {
+    width: W * 0.5,
+    height: W * 0.5,
   },
 });
