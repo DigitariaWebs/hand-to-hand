@@ -153,6 +153,51 @@ export default function DeliveryTrackingScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Buyer awareness card: shown when transporter is en route / in_transit */}
+        {(missionStatus === 'in_transit' || missionStatus === 'picked_up' || missionStatus === 'delivery_pending') && (
+          <View style={[styles.awarenessCard, { backgroundColor: `${theme.primary}08`, borderColor: `${theme.primary}25` }]}>
+            <View style={styles.awarenessHeader}>
+              <Feather name="smartphone" size={18} color={theme.primary} />
+              <Text style={[styles.awarenessTitle, { color: theme.primary }]}>
+                Préparez-vous pour la remise
+              </Text>
+            </View>
+            <Text style={[styles.awarenessBody, { color: theme.textSecondary }]}>
+              À l'arrivée du transporteur, vous aurez besoin de :
+            </Text>
+            <Text style={[styles.awarenessStep, { color: theme.text }]}>1. Votre QR code (affiché sur l'écran de remise)</Text>
+            <Text style={[styles.awarenessStep, { color: theme.text }]}>2. Vérifier visuellement le colis</Text>
+            <Text style={[styles.awarenessBody, { color: theme.textSecondary, marginTop: 6 }]}>
+              Le transporteur scannera votre QR code puis le code du colis pour confirmer la livraison. Tout se passe rapidement et simplement ! 😊
+            </Text>
+            <TouchableOpacity onPress={() => router.push('/logistics/buyer-handoff')} style={{ marginTop: 10 }}>
+              <Text style={[styles.awarenessLink, { color: theme.primary }]}>
+                Ouvrir mon QR code →
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Seller awareness card: bon d'envoi reminder after confirmation, before pickup */}
+        {(missionStatus === 'group_created' || missionStatus === 'pickup_pending') && (
+          <View style={[styles.awarenessCard, { backgroundColor: `${theme.warning}08`, borderColor: `${theme.warning}30` }]}>
+            <View style={styles.awarenessHeader}>
+              <Feather name="package" size={18} color={theme.warning} />
+              <Text style={[styles.awarenessTitle, { color: theme.warning }]}>
+                Rappel : bon d'envoi
+              </Text>
+            </View>
+            <Text style={[styles.awarenessBody, { color: theme.textSecondary }]}>
+              Avez-vous imprimé et collé le bon d'envoi sur le colis ? Le transporteur en a besoin pour valider la prise en charge.
+            </Text>
+            <TouchableOpacity onPress={() => router.push('/logistics/mission-group')} style={{ marginTop: 10 }}>
+              <Text style={[styles.awarenessLink, { color: theme.warning }]}>
+                Retélécharger le bon d'envoi →
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Hub locked indicator */}
         {isHubLocked && lockedHubId && destHub && (
           <View style={[styles.statusCard, { backgroundColor: `${theme.warning}08`, borderColor: `${theme.warning}25` }]}>
@@ -280,6 +325,17 @@ const styles = StyleSheet.create({
     width: 38, height: 38, borderRadius: 19, borderWidth: 1.5,
     alignItems: 'center', justifyContent: 'center',
   },
+
+  // Awareness cards (V3-8)
+  awarenessCard: {
+    padding: Spacing.md, borderRadius: BorderRadius.md, borderWidth: 1,
+    gap: 4,
+  },
+  awarenessHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.xs },
+  awarenessTitle: { ...Typography.bodyMedium, fontFamily: 'Poppins_600SemiBold' },
+  awarenessBody: { ...Typography.caption },
+  awarenessStep: { ...Typography.caption, paddingLeft: 6 },
+  awarenessLink: { ...Typography.captionMedium, textDecorationLine: 'underline' },
 
   // Timeline
   timelineTitle: { ...Typography.h3 },

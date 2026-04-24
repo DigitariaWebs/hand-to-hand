@@ -11,6 +11,8 @@ const sellers = [
     city: 'Nice',
     accountType: 'individual' as const,
     isVerifiedEcommerce: false,
+    phone: '+33612345678',
+    showPhoneOnListings: true,
   },
   {
     id: 'u2',
@@ -24,6 +26,8 @@ const sellers = [
     isVerifiedEcommerce: true,
     storeAddress: '24 Rue Ménadier, 06400 Cannes',
     storeHours: { open: '09:00', close: '19:00' },
+    phone: '+33698765432',
+    showPhoneOnListings: true,
   },
   {
     id: 'u3',
@@ -35,6 +39,8 @@ const sellers = [
     city: 'Antibes',
     accountType: 'individual' as const,
     isVerifiedEcommerce: false,
+    phone: '+33623456789',
+    showPhoneOnListings: false,
   },
   {
     id: 'u4',
@@ -46,6 +52,8 @@ const sellers = [
     city: 'Toulon',
     accountType: 'individual' as const,
     isVerifiedEcommerce: false,
+    phone: '+33634567890',
+    showPhoneOnListings: false,
   },
   {
     id: 'u5',
@@ -59,6 +67,8 @@ const sellers = [
     isVerifiedEcommerce: true,
     storeAddress: '8 Rue Paradis, 13001 Marseille',
     storeHours: { open: '10:00', close: '18:30' },
+    phone: '+33645678901',
+    showPhoneOnListings: false,
   },
 ];
 

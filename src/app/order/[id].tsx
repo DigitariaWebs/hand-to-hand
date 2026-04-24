@@ -27,6 +27,10 @@ import { formatPrice } from '@/utils';
 import { useCartStore } from '@/stores/useCartStore';
 import { mockProducts } from '@/services/mock/products';
 import { mockHubs } from '@/services/mock/hubs';
+import { shareInvoice } from '@/services/invoiceGenerator';
+import { generateInvoiceNumber } from '@/utils/invoiceNumber';
+import type { InvoiceData } from '@/types/invoice';
+import { currentMockUser } from '@/services/mock/users';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -397,6 +401,62 @@ export default function OrderTrackingScreen() {
           ))}
         </View>
 
+        {/* ── Invoice row (always visible; disabled if not completed) ─── */}
+        <TouchableOpacity
+          style={[
+            styles.invoiceRow,
+            { backgroundColor: theme.surface, borderColor: theme.border },
+          ]}
+          onPress={async () => {
+            const deliveryFee = 2.5;
+            const invoice: InvoiceData = {
+              invoiceNumber: generateInvoiceNumber(orderNumber),
+              date: new Date().toISOString(),
+              seller: {
+                name: product.seller.username,
+                city: product.location?.city,
+              },
+              buyer: {
+                name: `${currentMockUser.firstName} ${currentMockUser.lastName}`,
+                city: currentMockUser.location?.city,
+              },
+              product: {
+                title: product.title,
+                description: product.description?.slice(0, 80),
+                quantity: 1,
+                unitPrice: product.price,
+              },
+              deliveryFee,
+              serviceFee: 0,
+              total: product.price + deliveryFee,
+              orderReference: orderNumber,
+            };
+            try {
+              await shareInvoice(invoice);
+            } catch {
+              // silent — warm fallback: user can retry
+            }
+          }}
+        >
+          <View
+            style={[
+              styles.invoiceIcon,
+              { backgroundColor: `${theme.primary}12` },
+            ]}
+          >
+            <Feather name="file-text" size={18} color={theme.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.invoiceTitle, { color: theme.text }]}>
+              Facture
+            </Text>
+            <Text style={[styles.invoiceSub, { color: theme.textSecondary }]}>
+              Voir / Télécharger le PDF
+            </Text>
+          </View>
+          <Feather name="download" size={16} color={theme.primary} />
+        </TouchableOpacity>
+
         {/* ── Help link ────────────────────────────────────────────────── */}
         <TouchableOpacity style={styles.helpRow}>
           <Feather name="help-circle" size={16} color={theme.textSecondary} />
@@ -599,6 +659,25 @@ const styles = StyleSheet.create({
   },
   contactBtnText: { ...Typography.captionMedium },
   participantDivider: { height: StyleSheet.hairlineWidth, marginHorizontal: Spacing.lg },
+
+  // Invoice
+  invoiceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+  },
+  invoiceIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  invoiceTitle: { ...Typography.bodyMedium, fontFamily: 'Poppins_600SemiBold' },
+  invoiceSub: { ...Typography.caption, marginTop: 1 },
 
   // Help
   helpRow: {

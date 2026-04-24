@@ -1,6 +1,33 @@
 import { Route } from '@/types/logistics';
 
+// ─── Helpers to produce relative dates based on "now" ─────────────────────
+// We want mocks to stay fresh regardless of when the app is opened: a route
+// scheduled "today" should actually land in today's bucket.
+
+const now = new Date();
+const today = new Date(now);
+today.setSeconds(0, 0);
+
+function atHourToday(h: number, m: number = 0): string {
+  const d = new Date(today);
+  d.setHours(h, m, 0, 0);
+  return d.toISOString();
+}
+function atHourRelative(daysOffset: number, h: number, m: number = 0): string {
+  const d = new Date(today);
+  d.setDate(d.getDate() + daysOffset);
+  d.setHours(h, m, 0, 0);
+  return d.toISOString();
+}
+
+const TODAY_LATE = atHourToday(Math.max(now.getHours() + 3, 14), 30);
+const TODAY_LATER = atHourToday(Math.max(now.getHours() + 5, 18), 0);
+const TOMORROW_AM = atHourRelative(1, 9, 0);
+const TOMORROW_PM = atHourRelative(1, 15, 30);
+const DAY_AFTER_AM = atHourRelative(2, 11, 15);
+
 export const mockRoutes: Route[] = [
+  // Favorite 1 — today early afternoon (car)
   {
     id: 'r1',
     transporterId: 'u2',
@@ -16,8 +43,8 @@ export const mockRoutes: Route[] = [
       { city: 'Cannes', hubId: 'h2', coordinates: { lat: 43.5528, lng: 7.0174 } },
       { city: 'Toulon', hubId: 'h5', coordinates: { lat: 43.1242, lng: 5.928 } },
     ],
-    departureTime: '2025-04-03T08:00:00Z',
-    estimatedArrival: '2025-04-03T13:00:00Z',
+    departureTime: TODAY_LATE,
+    estimatedArrival: TODAY_LATER,
     transportMode: 'car',
     maxPackages: 5,
     maxSize: 'L',
@@ -32,6 +59,7 @@ export const mockRoutes: Route[] = [
     status: 'scheduled',
     distance: 198,
   },
+  // Favorite 2 — today (scooter) — shorter route
   {
     id: 'r2',
     transporterId: 'u1',
@@ -44,8 +72,8 @@ export const mockRoutes: Route[] = [
     departureHubId: 'h4',
     deliveryHubIds: ['h1'],
     stops: [],
-    departureTime: '2025-04-02T16:00:00Z',
-    estimatedArrival: '2025-04-02T17:00:00Z',
+    departureTime: atHourToday(Math.max(now.getHours() + 2, 12), 0),
+    estimatedArrival: atHourToday(Math.max(now.getHours() + 3, 13), 0),
     transportMode: 'scooter',
     maxPackages: 2,
     maxSize: 'S',
@@ -60,6 +88,7 @@ export const mockRoutes: Route[] = [
     status: 'scheduled',
     distance: 23,
   },
+  // Today — bicycle
   {
     id: 'r3',
     transporterId: 'u4',
@@ -72,8 +101,8 @@ export const mockRoutes: Route[] = [
     departureHubId: 'h5',
     deliveryHubIds: ['h3'],
     stops: [],
-    departureTime: '2025-04-04T07:30:00Z',
-    estimatedArrival: '2025-04-04T08:45:00Z',
+    departureTime: atHourToday(Math.max(now.getHours() + 4, 16), 30),
+    estimatedArrival: atHourToday(Math.max(now.getHours() + 6, 18), 0),
     transportMode: 'bike',
     maxPackages: 1,
     maxSize: 'S',
@@ -88,8 +117,38 @@ export const mockRoutes: Route[] = [
     status: 'scheduled',
     distance: 67,
   },
+  // Today — motorcycle
   {
     id: 'r4',
+    transporterId: 'u5',
+    transporterName: 'lucas_r',
+    transporterAvatar: 'https://i.pravatar.cc/150?img=12',
+    transporterRating: 4.5,
+    routeType: 'oneoff',
+    origin: { city: 'Nice', coordinates: { lat: 43.7102, lng: 7.262 } },
+    destination: { city: 'Cannes', coordinates: { lat: 43.5528, lng: 7.0174 } },
+    departureHubId: 'h1',
+    deliveryHubIds: ['h2'],
+    stops: [],
+    departureTime: atHourToday(Math.max(now.getHours() + 6, 19), 0),
+    estimatedArrival: atHourToday(Math.max(now.getHours() + 7, 20), 0),
+    transportMode: 'scooter',
+    maxPackages: 3,
+    maxSize: 'M',
+    maxWeight: 8,
+    offHubPossible: true,
+    recurringDays: [],
+    vehicleType: 'moto',
+    availableCapacity: 30,
+    totalCapacity: 40,
+    pricePerKg: 3.5,
+    pricePerItem: 6,
+    status: 'scheduled',
+    distance: 30,
+  },
+  // Tomorrow — car AM
+  {
+    id: 'r5',
     transporterId: 'u3',
     transporterName: 'amelie_d',
     transporterAvatar: 'https://i.pravatar.cc/150?img=5',
@@ -102,8 +161,8 @@ export const mockRoutes: Route[] = [
     stops: [
       { city: 'Cannes', hubId: 'h2', coordinates: { lat: 43.5528, lng: 7.0174 } },
     ],
-    departureTime: '2025-04-05T09:00:00Z',
-    estimatedArrival: '2025-04-05T11:30:00Z',
+    departureTime: TOMORROW_AM,
+    estimatedArrival: atHourRelative(1, 11, 30),
     transportMode: 'car',
     maxPackages: 4,
     maxSize: 'L',
@@ -117,5 +176,63 @@ export const mockRoutes: Route[] = [
     pricePerItem: 7,
     status: 'scheduled',
     distance: 89,
+  },
+  // Tomorrow — train PM
+  {
+    id: 'r6',
+    transporterId: 'u6',
+    transporterName: 'nadia_k',
+    transporterAvatar: 'https://i.pravatar.cc/150?img=20',
+    transporterRating: 4.7,
+    routeType: 'recurring',
+    origin: { city: 'Marseille', coordinates: { lat: 43.2965, lng: 5.3698 } },
+    destination: { city: 'Nice', coordinates: { lat: 43.7102, lng: 7.262 } },
+    departureHubId: 'h3',
+    deliveryHubIds: ['h1'],
+    stops: [],
+    departureTime: TOMORROW_PM,
+    estimatedArrival: atHourRelative(1, 17, 45),
+    transportMode: 'car',
+    maxPackages: 3,
+    maxSize: 'M',
+    maxWeight: 12,
+    offHubPossible: false,
+    recurringDays: ['L', 'Ma', 'Me', 'J', 'V'],
+    vehicleType: 'voiture',
+    availableCapacity: 22,
+    totalCapacity: 30,
+    pricePerKg: 2.2,
+    pricePerItem: 6,
+    status: 'scheduled',
+    distance: 200,
+  },
+  // Day after tomorrow — scooter
+  {
+    id: 'r7',
+    transporterId: 'u7',
+    transporterName: 'yann_p',
+    transporterAvatar: 'https://i.pravatar.cc/150?img=33',
+    transporterRating: 4.4,
+    routeType: 'oneoff',
+    origin: { city: 'Cannes', coordinates: { lat: 43.5528, lng: 7.0174 } },
+    destination: { city: 'Nice', coordinates: { lat: 43.7102, lng: 7.262 } },
+    departureHubId: 'h2',
+    deliveryHubIds: ['h1'],
+    stops: [],
+    departureTime: DAY_AFTER_AM,
+    estimatedArrival: atHourRelative(2, 12, 0),
+    transportMode: 'scooter',
+    maxPackages: 2,
+    maxSize: 'S',
+    maxWeight: 6,
+    offHubPossible: true,
+    recurringDays: [],
+    vehicleType: 'moto',
+    availableCapacity: 14,
+    totalCapacity: 20,
+    pricePerKg: 3.2,
+    pricePerItem: 5.5,
+    status: 'scheduled',
+    distance: 34,
   },
 ];

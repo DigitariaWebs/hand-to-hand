@@ -8,6 +8,7 @@ import {
   Share,
   Platform,
   Dimensions,
+  Linking,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Image } from 'expo-image';
@@ -29,6 +30,12 @@ import { Colors } from '@/constants/Colors';
 import { mockProducts } from '@/services/mock/products';
 import { formatPrice, formatRelativeTime } from '@/utils';
 import { Product, ProductCondition } from '@/types/product';
+import { HowItWorksSheet } from '@/components/logistics/HowItWorksSheet';
+import { useAuthStore } from '@/stores/useAuthStore';
+import { InfoTooltip } from '@/components/ui/InfoTooltip';
+import { useAppStore } from '@/stores/useAppStore';
+import fr from '@/i18n/fr';
+import en from '@/i18n/en';
 
 const { width: W, height: H } = Dimensions.get('window');
 const GALLERY_H = H * 0.52;
@@ -187,7 +194,9 @@ function capitalize(s: string): string {
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
 }
 
-function getProductSpecs(product: Product): { label: string; value: string }[] {
+type Spec = { label: string; value: string; tooltip?: string };
+
+function getProductSpecs(product: Product, tooltips: { batteryTooltip: string }): Spec[] {
   const cond = CONDITION_CONFIG[product.condition].label;
   const brand = capitalize(product.tags[1] ?? product.tags[0] ?? 'Non précisé');
 
@@ -196,7 +205,11 @@ function getProductSpecs(product: Product): { label: string; value: string }[] {
       return [
         { label: 'État', value: cond },
         { label: 'Marque', value: brand },
-        { label: 'État batterie', value: BATTERY[product.condition] },
+        {
+          label: 'État batterie',
+          value: BATTERY[product.condition],
+          tooltip: tooltips.batteryTooltip,
+        },
         { label: 'Couleur', value: 'Noir Spatial' },
         { label: 'Connectivité', value: '5G / Wi-Fi 6' },
       ];
@@ -333,6 +346,12 @@ export default function ProductDetailScreen() {
   const deliveryOptions = product ? buildDeliveryOptions(product.seller) : [];
   const defaultDeliveryKey = product?.seller.isVerifiedEcommerce ? 'logistics_pickup' : 'logistics_hub';
   const [selectedDelivery, setSelectedDelivery] = useState<DeliveryKey>(defaultDeliveryKey);
+  const [howItWorksVisible, setHowItWorksVisible] = useState(false);
+
+  const authUser = useAuthStore((s) => s.user);
+  const isOwnListing = !!product && !!authUser && authUser.id === product?.seller.username;
+  const sellerShowsPhone = product?.seller?.showPhoneOnListings === true;
+  const sellerPhone = product?.seller?.phone;
 
   const heartScale = useSharedValue(1);
   const scrollY = useSharedValue(0);
@@ -425,7 +444,11 @@ export default function ProductDetailScreen() {
 
   const deal = getDealInfo(product.dealScore, product.price, product.originalPrice);
   const condConfig = CONDITION_CONFIG[product.condition];
-  const specs = getProductSpecs(product);
+  const { language } = useAppStore();
+  const t = language === 'en' ? en : fr;
+  const specs = getProductSpecs(product, {
+    batteryTooltip: t.product.batteryTooltip,
+  });
   const memberSince = MEMBER_SINCE[product.seller.id] ?? 'récemment';
   const discountPct = product.originalPrice
     ? Math.round((1 - product.price / product.originalPrice) * 100)
@@ -569,7 +592,10 @@ export default function ProductDetailScreen() {
             <React.Fragment key={spec.label}>
               <View style={styles.specRow}>
                 <Text style={styles.specLabel}>{spec.label}</Text>
-                <Text style={styles.specValue}>{spec.value}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={styles.specValue}>{spec.value}</Text>
+                  {spec.tooltip && <InfoTooltip text={spec.tooltip} iconSize={18} />}
+                </View>
               </View>
               {i < specs.length - 1 && <View style={styles.specDivider} />}
             </React.Fragment>
@@ -642,6 +668,23 @@ export default function ProductDetailScreen() {
             <Ionicons name="chatbubble-outline" size={16} color={PRIMARY} />
             <Text style={styles.contactBtnText}>Contacter le vendeur</Text>
           </TouchableOpacity>
+
+          {sellerShowsPhone && sellerPhone && !isOwnListing && (
+            <>
+              <TouchableOpacity
+                style={[styles.contactBtn, { marginTop: 8, borderColor: PRIMARY_END }]}
+                onPress={() => Linking.openURL(`tel:${sellerPhone}`)}
+              >
+                <Ionicons name="call-outline" size={16} color={PRIMARY_END} />
+                <Text style={[styles.contactBtnText, { color: PRIMARY_END }]}>
+                  Appeler le vendeur
+                </Text>
+              </TouchableOpacity>
+              <Text style={{ fontSize: 11, color: '#6B7280', textAlign: 'center', marginTop: 4 }}>
+                Le vendeur a choisi de partager son numéro
+              </Text>
+            </>
+          )}
         </View>
 
         <View style={styles.divider} />
@@ -650,9 +693,45 @@ export default function ProductDetailScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Livraison</Text>
 
+          {/* H2H info card — visible to both buyers and sellers */}
+          <View style={styles.h2hCard}>
+            <View style={styles.h2hBorder} />
+            <View style={{ flex: 1, gap: 6, padding: 14 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={{ fontSize: 18 }}>🚗</Text>
+                <Text style={styles.h2hTitle}>Livraison Hand to Hand disponible</Text>
+              </View>
+              <Text style={styles.h2hBody}>
+                {isOwnListing
+                  ? "Proposez ce colis à un transporteur qui fait déjà le trajet entre hubs. Économique, écologique, sécurisé."
+                  : "Un transporteur particulier livre cet article entre hubs sur son trajet quotidien. Économique • Écologique • Sécurisé"}
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center', marginTop: 4, flexWrap: 'wrap' }}>
+                <TouchableOpacity
+                  style={styles.h2hCta}
+                  onPress={() =>
+                    router.push(
+                      isOwnListing
+                        ? ('/become-transporter' as any)
+                        : '/logistics/transporter-list',
+                    )
+                  }
+                >
+                  <Text style={styles.h2hCtaText}>
+                    {isOwnListing ? 'Proposer un trajet' : 'Voir les transporteurs disponibles'}
+                  </Text>
+                  <Ionicons name="arrow-forward" size={14} color="#FFF" />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setHowItWorksVisible(true)}>
+                  <Text style={styles.h2hHowLink}>Comment ça marche ?</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+
           {/* Preparation hours info */}
           {product.seller.storeHours && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8, paddingHorizontal: 4 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8, marginTop: 10, paddingHorizontal: 4 }}>
               <Ionicons name="time-outline" size={13} color="#6B7280" />
               <Text style={[styles.deliverySub, { fontSize: 11 }]}>
                 Livraison Hand to Hand disponible pendant les horaires de préparation du vendeur ({product.seller.storeHours.open}–{product.seller.storeHours.close})
@@ -803,6 +882,11 @@ export default function ProductDetailScreen() {
           </LinearGradient>
         </TouchableOpacity>
       </BlurView>
+
+      <HowItWorksSheet
+        visible={howItWorksVisible}
+        onClose={() => setHowItWorksVisible(false)}
+      />
     </View>
   );
 }
@@ -1148,6 +1232,50 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_500Medium',
     fontSize: 11,
     color: PRIMARY,
+  },
+
+  // H2H eco card on product detail
+  h2hCard: {
+    flexDirection: 'row',
+    backgroundColor: '#F0F1FA',
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 12,
+  },
+  h2hBorder: {
+    width: 3,
+    backgroundColor: PRIMARY,
+  },
+  h2hTitle: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 13,
+    color: PRIMARY,
+  },
+  h2hBody: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 11.5,
+    color: '#4B5563',
+    lineHeight: 16,
+  },
+  h2hCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: PRIMARY,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+  },
+  h2hCtaText: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 11,
+    color: '#FFF',
+  },
+  h2hHowLink: {
+    fontFamily: 'Poppins_500Medium',
+    fontSize: 11,
+    color: PRIMARY,
+    textDecorationLine: 'underline',
   },
 
   // Fixed overlays

@@ -373,7 +373,7 @@ export default function OffHubDeliveryScreen() {
             </View>
             <Text style={[styles.successTitle, { color: theme.text }]}>Remise réussie</Text>
             <Text style={[styles.successSub, { color: theme.textSecondary }]}>
-              Tout s'est bien passé ! Le paiement sera débloqué après validation par code OTP.
+              Tout s'est bien passé ! Le paiement sera débloqué après validation par scan QR.
             </Text>
 
             <TouchableOpacity onPress={() => router.replace('/')}>

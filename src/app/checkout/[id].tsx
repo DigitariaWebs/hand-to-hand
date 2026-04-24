@@ -36,6 +36,9 @@ import {
 import { useCartStore } from '@/stores/useCartStore';
 import { mockProducts } from '@/services/mock/products';
 import { mockHubs } from '@/services/mock/hubs';
+import { HowItWorksSheet } from '@/components/logistics/HowItWorksSheet';
+import { calculateCo2Saved, formatCo2, TransportType } from '@/utils/carbon';
+import { useLogisticsStore } from '@/stores/useLogisticsStore';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -157,6 +160,12 @@ export default function CheckoutScreen() {
   // State
   const [quantity, setQuantity] = useState(1);
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>('h2h');
+  const [howItWorksVisible, setHowItWorksVisible] = useState(false);
+
+  const selectedRoute = useLogisticsStore((s) => s.selectedRoute);
+  const ecoKg = selectedRoute
+    ? calculateCo2Saved(selectedRoute.distance, (selectedRoute.transportMode as TransportType) ?? 'car')
+    : 0;
   const [selectedCardId, setSelectedCardId] = useState<string>('c1');
   const [isAddingCard, setIsAddingCard] = useState(false);
   const [cardForm, setCardForm] = useState<CardFormState>({
@@ -400,6 +409,24 @@ export default function CheckoutScreen() {
           <Animated.View entering={FadeIn} exiting={FadeOut}>
             <View
               style={[
+                styles.ecoBanner,
+                { backgroundColor: `${theme.success}10`, borderColor: `${theme.success}30` },
+              ]}
+            >
+              <Feather name="feather" size={14} color={theme.success} />
+              <Text style={[styles.ecoBannerText, { color: theme.success }]}>
+                Livraison éco-responsable — Un transporteur livre sur son trajet existant, moins d'émissions pour tous.
+              </Text>
+            </View>
+
+            <TouchableOpacity onPress={() => setHowItWorksVisible(true)} style={{ alignSelf: 'center', marginTop: 6, marginBottom: 4 }}>
+              <Text style={{ fontSize: 12, color: theme.primary, textDecorationLine: 'underline', fontFamily: 'Poppins_500Medium' }}>
+                Comment ça marche ?
+              </Text>
+            </TouchableOpacity>
+
+            <View
+              style={[
                 styles.detailCard,
                 { backgroundColor: theme.surface, borderColor: theme.border },
               ]}
@@ -430,6 +457,12 @@ export default function CheckoutScreen() {
                   Modifier les hubs
                 </Text>
               </TouchableOpacity>
+
+              {ecoKg > 0 && (
+                <Text style={[styles.ecoSummary, { color: theme.success }]}>
+                  🌿 Impact écologique : environ {formatCo2(ecoKg)} évités
+                </Text>
+              )}
             </View>
           </Animated.View>
         )}
@@ -751,7 +784,7 @@ export default function CheckoutScreen() {
             </Text>
           </View>
           <Text style={[styles.protectionBody, { color: theme.textSecondary }]}>
-            Votre paiement est sécurisé et ne sera libéré qu'après validation finale de la livraison par code OTP. Aucun transfert ne sera effectué avant votre confirmation explicite.
+            Votre paiement est sécurisé et ne sera libéré qu'après validation finale par scan QR. Aucun transfert ne sera effectué avant votre confirmation explicite.
           </Text>
           <TouchableOpacity>
             <Text style={[styles.protectionLink, { color: theme.primary }]}>En savoir plus</Text>
@@ -795,6 +828,8 @@ export default function CheckoutScreen() {
           </LinearGradient>
         </TouchableOpacity>
       </View>
+
+      <HowItWorksSheet visible={howItWorksVisible} onClose={() => setHowItWorksVisible(false)} />
     </KeyboardAvoidingView>
   );
 }
@@ -894,6 +929,21 @@ const styles = StyleSheet.create({
   deliveryLabel: { ...Typography.bodyMedium, fontFamily: 'Poppins_600SemiBold' },
   deliverySub: { ...Typography.caption },
   deliveryPrice: { ...Typography.captionMedium, fontFamily: 'Poppins_600SemiBold' },
+
+  // Eco banner
+  ecoBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
+    padding: Spacing.md, borderRadius: BorderRadius.md, borderWidth: 1,
+    marginTop: Spacing.sm,
+  },
+  ecoBannerText: { ...Typography.caption, flex: 1 },
+
+  // Eco summary (appears below Hand to Hand selected transporter info)
+  ecoSummary: {
+    ...Typography.caption,
+    marginTop: Spacing.sm,
+    textAlign: 'center',
+  },
 
   // Detail cards
   detailCard: {

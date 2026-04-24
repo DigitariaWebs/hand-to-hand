@@ -39,6 +39,9 @@ import {
   useMessagesStore,
   ChatMessage,
 } from '@/stores/useMessagesStore';
+import { shareInvoice } from '@/services/invoiceGenerator';
+import { generateInvoiceNumber } from '@/utils/invoiceNumber';
+import { currentMockUser } from '@/services/mock/users';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 
@@ -798,6 +801,45 @@ export default function ChatScreen() {
           </Animated.View>
         )}
 
+        {/* ── Invoice banner (visible when a product is attached) ── */}
+        {showProduct && (
+          <TouchableOpacity
+            style={ms.invoiceBanner}
+            activeOpacity={0.8}
+            onPress={async () => {
+              const deliveryFee = 2.5;
+              try {
+                await shareInvoice({
+                  invoiceNumber: generateInvoiceNumber(conv.product.id),
+                  date: new Date().toISOString(),
+                  seller: { name: conv.participant.username },
+                  buyer: {
+                    name: `${currentMockUser.firstName} ${currentMockUser.lastName}`,
+                    city: currentMockUser.location?.city,
+                  },
+                  product: {
+                    title: conv.product.title,
+                    quantity: 1,
+                    unitPrice: conv.product.price,
+                  },
+                  deliveryFee,
+                  serviceFee: 0,
+                  total: conv.product.price + deliveryFee,
+                  orderReference: conv.product.id,
+                });
+              } catch {
+                // silent
+              }
+            }}
+          >
+            <View style={ms.invoiceIcon}>
+              <Feather name="file-text" size={14} color={Colors.light.primary} />
+            </View>
+            <Text style={ms.invoiceText}>Télécharger la facture</Text>
+            <Feather name="download" size={14} color={Colors.light.primary} />
+          </TouchableOpacity>
+        )}
+
         {/* ── Messages ── */}
         <FlatList
           ref={flatRef}
@@ -983,6 +1025,33 @@ const ms = StyleSheet.create({
     backgroundColor: Colors.light.background,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+
+  // Invoice banner
+  invoiceBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginHorizontal: Spacing.lg,
+    marginTop: Spacing.sm,
+    paddingVertical: 8,
+    paddingHorizontal: Spacing.md,
+    backgroundColor: Colors.light.surfaceElevated,
+    borderRadius: BorderRadius.md,
+  },
+  invoiceIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: `${Colors.light.primary}15`,
+  },
+  invoiceText: {
+    flex: 1,
+    fontFamily: 'Poppins_500Medium',
+    fontSize: 12,
+    color: Colors.light.primary,
   },
 
   // Messages

@@ -83,7 +83,7 @@ export type Transporter = {
 
 // ─── QR / Handoff Types ────────────────────────────────────────────────────
 
-export type HandoffRole = 'seller' | 'transporter_pickup' | 'transporter_delivery';
+export type HandoffRole = 'seller' | 'buyer' | 'transporter_pickup' | 'transporter_delivery';
 
 export type QRPayload = {
   transactionId: string;
@@ -91,6 +91,13 @@ export type QRPayload = {
   hubId: string;
   timestamp: number;
   orderId: string;
+  code?: string;
+};
+
+export type BuyerQRPayload = {
+  type: 'buyer';
+  code: string;
+  missionId: string;
 };
 
 export type HandoffStatus =
@@ -128,7 +135,12 @@ export type HandoffTransaction = {
   deliveryFee: number;
   // Validation codes
   sellerQRCode: string;
-  buyerOTPCode: string;
+  buyerQRCode: string;
+  /** @deprecated Replaced by buyerQRCode (QR scan) since V3. Kept for back-compat fallback. */
+  buyerOTPCode?: string;
+  // Package tracking code (printed on bon d'envoi, scanned by transporter)
+  packageTrackingNumber: string;
+  bonEnvoiGenerated?: boolean;
   // Validation timestamps
   pickupValidatedAt?: string;
   deliveryValidatedAt?: string;

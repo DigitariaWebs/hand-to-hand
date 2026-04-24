@@ -24,12 +24,21 @@ export type ProductSeller = {
   isVerifiedEcommerce?: boolean;
   storeAddress?: string;
   storeHours?: { open: string; close: string };
+  phone?: string;
+  showPhoneOnListings?: boolean;
 };
 
 export type ProductLocation = {
   city: string;
   region: string;
   coordinates?: { lat: number; lng: number };
+};
+
+export type ProductSpecs = {
+  batteryHealth?: number;
+  brand?: string;
+  color?: string;
+  size?: string;
 };
 
 export type Product = {
@@ -56,6 +65,7 @@ export type Product = {
   viewCount: number;
   likeCount: number;
   tags: string[];
+  specs?: ProductSpecs;
   createdAt: string;
   expiresAt?: string;
 };

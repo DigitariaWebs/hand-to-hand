@@ -20,6 +20,7 @@ import { Spacing, BorderRadius } from '@/constants/Spacing';
 import { useLogisticsStore, GroupMember, MissionStatus } from '@/stores/useLogisticsStore';
 import { mockHubs } from '@/services/mock/hubs';
 import { ToleranceWindow } from '@/components/logistics/ToleranceWindow';
+import { generateAndSharePdf } from '@/services/bonEnvoi';
 
 // ── Quick messages ────────────────────────────────────────────────────────
 
@@ -75,10 +76,23 @@ export default function MissionGroupScreen() {
 
   const { mission, isHubLocked, lockedHubId } = useLogisticsStore();
   const [sentMsg, setSentMsg] = useState<string | null>(null);
+  const [bonEnvoiBusy, setBonEnvoiBusy] = useState(false);
 
   const handoff = mission?.handoff;
   const originHub = mockHubs.find((h) => h.id === handoff?.originHubId);
   const destHub = mockHubs.find((h) => h.id === handoff?.destinationHubId);
+
+  const handleOpenBonEnvoi = useCallback(async () => {
+    if (!handoff) return;
+    setBonEnvoiBusy(true);
+    try {
+      await generateAndSharePdf({ handoff, originHub, destinationHub: destHub });
+    } catch {
+      // warm fallback — toast would be nicer but keep it quiet
+    } finally {
+      setBonEnvoiBusy(false);
+    }
+  }, [handoff, originHub, destHub]);
 
   const timeline = buildTimeline(
     mission?.status ?? 'group_created',
@@ -168,6 +182,27 @@ export default function MissionGroupScreen() {
             />
           </View>
         )}
+
+        {/* Bon d'envoi */}
+        <Text style={[styles.sectionTitle, { color: theme.text, marginTop: Spacing.xl }]}>Documents</Text>
+        <TouchableOpacity
+          onPress={handleOpenBonEnvoi}
+          disabled={bonEnvoiBusy}
+          style={[styles.bonEnvoiRow, { backgroundColor: theme.surface, borderColor: theme.border, opacity: bonEnvoiBusy ? 0.6 : 1 }]}
+        >
+          <View style={[styles.bonEnvoiIcon, { backgroundColor: `${theme.primary}12` }]}>
+            <Feather name="file-text" size={18} color={theme.primary} />
+          </View>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={[styles.bonEnvoiRowTitle, { color: theme.text }]}>Bon d'envoi</Text>
+            <Text style={[styles.bonEnvoiRowSub, { color: theme.textSecondary }]}>
+              Code colis : {handoff.packageTrackingNumber}
+            </Text>
+          </View>
+          <View style={styles.bonEnvoiActionsRow}>
+            <Feather name="download" size={18} color={theme.primary} />
+          </View>
+        </TouchableOpacity>
 
         {/* Timeline */}
         <Text style={[styles.sectionTitle, { color: theme.text, marginTop: Spacing.xl }]}>Suivi de la mission</Text>
@@ -296,6 +331,15 @@ const styles = StyleSheet.create({
   body: { padding: Spacing.lg, paddingBottom: 100 },
 
   sectionTitle: { ...Typography.h3, marginBottom: Spacing.sm },
+
+  bonEnvoiRow: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
+    padding: Spacing.md, borderRadius: BorderRadius.md, borderWidth: 1,
+  },
+  bonEnvoiIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  bonEnvoiRowTitle: { ...Typography.bodyMedium, fontFamily: 'Poppins_600SemiBold' },
+  bonEnvoiRowSub: { ...Typography.caption },
+  bonEnvoiActionsRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
 
   // Participants
   participantsRow: { gap: Spacing.md },

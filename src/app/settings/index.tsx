@@ -31,7 +31,8 @@ type SettingRow = {
   type: RowType;
   value?: string;
   badge?: { text: string; color: string };
-  toggleKey?: 'isDarkMode';
+  toggleKey?: 'isDarkMode' | 'showPhoneOnListings';
+  caption?: string;
   onPress?: () => void;
 };
 
@@ -120,9 +121,24 @@ export default function SettingsScreen() {
   const router = useRouter();
   const user = currentMockUser;
 
-  const { isDarkMode, language, setDarkMode, setLanguage } = useAppStore();
+  const { isDarkMode, language, setDarkMode, setLanguage, showPhoneOnListings, setShowPhoneOnListings } = useAppStore();
   const { transporterStatus, setTransporterStatus } = useLogisticsStore();
   const [langPickerVisible, setLangPickerVisible] = useState(false);
+
+  const handleTogglePhone = (next: boolean) => {
+    if (next) {
+      Alert.alert(
+        'Afficher votre numéro ?',
+        "Votre numéro de téléphone sera visible sur vos annonces. Les acheteurs pourront vous appeler directement. Vous pouvez désactiver cette option à tout moment.",
+        [
+          { text: 'Annuler', style: 'cancel' },
+          { text: 'Activer', onPress: () => setShowPhoneOnListings(true) },
+        ],
+      );
+    } else {
+      setShowPhoneOnListings(false);
+    }
+  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -174,6 +190,30 @@ export default function SettingsScreen() {
             ? { text: 'Vérifié', color: Colors.light.success }
             : { text: 'En attente', color: Colors.light.warning },
           onPress: () => router.push('/settings/kyc' as any),
+        },
+      ],
+    },
+    {
+      title: 'CONFIDENTIALITÉ',
+      data: [
+        {
+          key: 'show_phone',
+          icon: 'phone',
+          iconColor: '#0EA5E9',
+          label: 'Afficher mon numéro sur mes annonces',
+          type: 'toggle',
+          toggleKey: 'showPhoneOnListings',
+          caption:
+            "Quand cette option est désactivée, les acheteurs vous contactent uniquement via le chat de l'application.",
+        },
+        {
+          key: 'phone_privacy_note',
+          icon: 'lock',
+          iconColor: '#6B7280',
+          label: "Votre numéro n'est jamais partagé avec les transporteurs",
+          type: 'info',
+          caption:
+            'Les livraisons Hand to Hand se font uniquement par chat et scan QR.',
         },
       ],
     },
@@ -259,18 +299,24 @@ export default function SettingsScreen() {
           onPress: () => router.push('/settings/favorite-transporters' as any),
         },
         {
-          key: 'delivery_history',
-          icon: 'clipboard',
-          iconColor: '#F59E0B',
-          label: 'Historique des livraisons',
-          type: 'nav',
-          onPress: () => router.push('/logistics/delivery-history' as any),
-        },
-        {
           key: 'h2h_prefs',
           icon: 'truck',
           label: 'Paramètres de livraison',
           type: 'nav',
+        },
+      ],
+    },
+    {
+      title: 'DÉCOUVRIR',
+      data: [
+        {
+          key: 'become_transporter',
+          icon: 'truck',
+          iconColor: Colors.light.primary,
+          label: 'Devenez transporteur H2H',
+          type: 'nav',
+          caption: 'Livrez des colis et gagnez de l\'argent.',
+          onPress: () => router.push('/become-transporter' as any),
         },
       ],
     },
@@ -329,76 +375,99 @@ export default function SettingsScreen() {
     const isLast = index === section.data.length - 1;
     const iconColor = item.type === 'danger' ? theme.error : (item.iconColor ?? theme.primary);
 
+    const toggleValue =
+      item.toggleKey === 'isDarkMode'
+        ? isDarkMode
+        : item.toggleKey === 'showPhoneOnListings'
+        ? showPhoneOnListings
+        : false;
+
+    const onToggleChange = (v: boolean) => {
+      if (item.toggleKey === 'isDarkMode') setDarkMode(v);
+      else if (item.toggleKey === 'showPhoneOnListings') handleTogglePhone(v);
+    };
+
     return (
-      <TouchableOpacity
+      <View
         style={[
-          styles.row,
           { backgroundColor: theme.surface },
           !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border },
         ]}
-        onPress={
-          item.type === 'danger'
-            ? handleLogout
-            : item.type === 'toggle'
-            ? undefined
-            : item.onPress ?? (() => {})
-        }
-        activeOpacity={item.type === 'toggle' ? 1 : 0.65}
       >
-        {/* Icon */}
-        <View
-          style={[
-            styles.rowIcon,
-            {
-              backgroundColor:
-                item.type === 'danger' ? `${theme.error}15` : `${iconColor}12`,
-            },
-          ]}
+        <TouchableOpacity
+          style={styles.row}
+          onPress={
+            item.type === 'danger'
+              ? handleLogout
+              : item.type === 'toggle' || item.type === 'info'
+              ? undefined
+              : item.onPress ?? (() => {})
+          }
+          activeOpacity={item.type === 'toggle' || item.type === 'info' ? 1 : 0.65}
+          accessibilityRole={item.type === 'toggle' ? 'switch' : 'button'}
+          accessibilityLabel={item.label}
+          accessibilityState={item.type === 'toggle' ? { checked: toggleValue } : undefined}
         >
-          <Feather name={item.icon} size={18} color={iconColor} />
-        </View>
-
-        {/* Label */}
-        <Text
-          style={[
-            styles.rowLabel,
-            { color: item.type === 'danger' ? theme.error : theme.text },
-          ]}
-        >
-          {item.label}
-        </Text>
-
-        {/* Right side */}
-        {item.type === 'toggle' ? (
-          <Switch
-            value={item.toggleKey === 'isDarkMode' ? isDarkMode : false}
-            onValueChange={(v) => {
-              if (item.toggleKey === 'isDarkMode') setDarkMode(v);
-            }}
-            trackColor={{ false: theme.border, true: `${theme.primary}60` }}
-            thumbColor={isDarkMode ? theme.primary : '#F3F4F6'}
-          />
-        ) : item.badge ? (
+          {/* Icon */}
           <View
             style={[
-              styles.badge,
-              { backgroundColor: `${item.badge.color}18` },
+              styles.rowIcon,
+              {
+                backgroundColor:
+                  item.type === 'danger' ? `${theme.error}15` : `${iconColor}12`,
+              },
             ]}
           >
-            <Text style={[styles.badgeText, { color: item.badge.color }]}>
-              {item.badge.text}
-            </Text>
+            <Feather name={item.icon} size={18} color={iconColor} />
           </View>
-        ) : item.value ? (
-          <Text style={[styles.rowValue, { color: theme.textSecondary }]}>
-            {item.value}
-          </Text>
-        ) : null}
 
-        {item.type !== 'toggle' && item.type !== 'danger' && (
-          <Feather name="chevron-right" size={16} color={theme.border} />
+          {/* Label */}
+          <Text
+            style={[
+              styles.rowLabel,
+              { color: item.type === 'danger' ? theme.error : theme.text },
+            ]}
+          >
+            {item.label}
+          </Text>
+
+          {/* Right side */}
+          {item.type === 'toggle' ? (
+            <Switch
+              value={toggleValue}
+              onValueChange={onToggleChange}
+              trackColor={{ false: theme.border, true: `${theme.primary}60` }}
+              thumbColor={toggleValue ? theme.primary : '#F3F4F6'}
+              accessibilityLabel={item.label}
+            />
+          ) : item.badge ? (
+            <View
+              style={[
+                styles.badge,
+                { backgroundColor: `${item.badge.color}18` },
+              ]}
+            >
+              <Text style={[styles.badgeText, { color: item.badge.color }]}>
+                {item.badge.text}
+              </Text>
+            </View>
+          ) : item.value ? (
+            <Text style={[styles.rowValue, { color: theme.textSecondary }]}>
+              {item.value}
+            </Text>
+          ) : null}
+
+          {item.type === 'nav' && (
+            <Feather name="chevron-right" size={16} color={theme.border} />
+          )}
+        </TouchableOpacity>
+
+        {item.caption && (
+          <Text style={[styles.rowCaption, { color: theme.textSecondary }]}>
+            {item.caption}
+          </Text>
         )}
-      </TouchableOpacity>
+      </View>
     );
   };
 
@@ -554,6 +623,13 @@ const styles = StyleSheet.create({
   },
   rowLabel: { ...Typography.bodyMedium, flex: 1 },
   rowValue: { ...Typography.caption },
+  rowCaption: {
+    ...Typography.caption,
+    fontSize: 11,
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.sm,
+    paddingTop: 0,
+  },
 
   badge: {
     paddingHorizontal: Spacing.sm,

@@ -101,10 +101,14 @@ PODS:
     - ReactCommon
   - ExpoNotifications (55.0.15):
     - ExpoModulesCore
+  - ExpoPrint (55.0.13):
+    - ExpoModulesCore
   - ExpoRouter (55.0.9):
     - ExpoModulesCore
     - RNScreens
   - ExpoSecureStore (55.0.10):
+    - ExpoModulesCore
+  - ExpoSharing (55.0.18):
     - ExpoModulesCore
   - ExpoSplashScreen (55.0.14):
     - ExpoModulesCore
@@ -2369,8 +2373,10 @@ DEPENDENCIES:
   - ExpoModulesCore (from `../node_modules/expo-modules-core`)
   - ExpoModulesJSI (from `../node_modules/expo-modules-core`)
   - ExpoNotifications (from `../node_modules/expo-notifications/ios`)
+  - ExpoPrint (from `../node_modules/expo-print/ios`)
   - ExpoRouter (from `../node_modules/expo-router/ios`)
   - ExpoSecureStore (from `../node_modules/expo-secure-store/ios`)
+  - ExpoSharing (from `../node_modules/expo-sharing/ios`)
   - ExpoSplashScreen (from `../node_modules/expo-splash-screen/ios`)
   - ExpoSymbols (from `../node_modules/expo-symbols/ios`)
   - ExpoSystemUI (from `../node_modules/expo-system-ui/ios`)
@@ -2523,10 +2529,14 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-modules-core"
   ExpoNotifications:
     :path: "../node_modules/expo-notifications/ios"
+  ExpoPrint:
+    :path: "../node_modules/expo-print/ios"
   ExpoRouter:
     :path: "../node_modules/expo-router/ios"
   ExpoSecureStore:
     :path: "../node_modules/expo-secure-store/ios"
+  ExpoSharing:
+    :path: "../node_modules/expo-sharing/ios"
   ExpoSplashScreen:
     :path: "../node_modules/expo-splash-screen/ios"
   ExpoSymbols:
@@ -2727,8 +2737,10 @@ SPEC CHECKSUMS:
   ExpoModulesCore: 78b5eaaf442942107626c4b4a482ccd1e1d35819
   ExpoModulesJSI: cfc75e37db50ce6dc9022823e1d181a08d1c82b3
   ExpoNotifications: c5eb58bbb7660acfb21fda77f54ff6684df07e48
+  ExpoPrint: 3b79c16d6778b4a89fb4eb9cc346925690cb0c74
   ExpoRouter: 0e2a41b6064f3307c4109d4a396cafcf4e460216
   ExpoSecureStore: 23b3dc3ded910be2e2f4c8232e8d2f951c965f3c
+  ExpoSharing: 5acc9d78894386d31b862b12ed1cebe7dce74e68
   ExpoSplashScreen: 61b673bf92ca2fc01d97d8b24b4af5e4b33fc74e
   ExpoSymbols: 8c998de94264bd980e21f87144cd2f19314f2f59
   ExpoSystemUI: dd7000e6d0d5cf3d1ac28adbc4aba4b439a0ce9b
@@ -2830,6 +2842,6 @@ SPEC CHECKSUMS:
   Yoga: acd565934addf7423687593ec490bd4491b2a802
   ZXingObjC: 8898711ab495761b2dbbdec76d90164a6d7e14c5
 
-PODFILE CHECKSUM: 9c2ebd840d9a8088368fe2fbc95bf664b5ac49fa
+PODFILE CHECKSUM: 6f11b171a6a0e3403d37f926f4e56343577d9db9
 
 COCOAPODS: 1.16.2

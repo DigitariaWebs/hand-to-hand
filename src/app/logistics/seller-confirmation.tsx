@@ -19,6 +19,7 @@ import { Typography } from '@/constants/Typography';
 import { Spacing, BorderRadius } from '@/constants/Spacing';
 import { useLogisticsStore } from '@/stores/useLogisticsStore';
 import { mockHubs } from '@/services/mock/hubs';
+import { generateAndSharePdf, printBonEnvoi } from '@/services/bonEnvoi';
 
 const TIMER_TOTAL_S = 20 * 60; // 20 minutes
 
@@ -46,7 +47,41 @@ export default function SellerConfirmationScreen() {
 
   const handoff = mission?.handoff;
   const originHub = mockHubs.find((h) => h.id === handoff?.originHubId);
+  const destinationHub = mockHubs.find((h) => h.id === handoff?.destinationHubId);
   const transporter = mission?.groupMembers.find((m) => m.role === 'transporter');
+
+  const [pdfError, setPdfError] = useState<string | null>(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
+
+  const handleDownloadPdf = useCallback(async () => {
+    if (!handoff) return;
+    setPdfBusy(true);
+    setPdfError(null);
+    try {
+      await generateAndSharePdf({ handoff, originHub, destinationHub });
+    } catch {
+      setPdfError(
+        `Un petit souci avec le bon d'envoi. Réessayez dans un instant, ou notez le code colis : ${handoff.packageTrackingNumber}`,
+      );
+    } finally {
+      setPdfBusy(false);
+    }
+  }, [handoff, originHub, destinationHub]);
+
+  const handlePrintPdf = useCallback(async () => {
+    if (!handoff) return;
+    setPdfBusy(true);
+    setPdfError(null);
+    try {
+      await printBonEnvoi({ handoff, originHub, destinationHub });
+    } catch {
+      setPdfError(
+        `Un petit souci avec l'impression. Téléchargez le PDF ou notez le code : ${handoff.packageTrackingNumber}`,
+      );
+    } finally {
+      setPdfBusy(false);
+    }
+  }, [handoff, originHub, destinationHub]);
 
   useEffect(() => {
     timerRef.current = setInterval(() => {
@@ -76,8 +111,13 @@ export default function SellerConfirmationScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     setResult('accepted');
     sellerAccept();
-    setTimeout(() => router.replace('/logistics/mission-group'), 1500);
-  }, [sellerAccept, router]);
+    // Auto-generate PDF in background so it's ready by the time user interacts
+    if (handoff) {
+      generateAndSharePdf({ handoff, originHub, destinationHub }).catch(() => {
+        // Silent — the card UI will still offer retry buttons
+      });
+    }
+  }, [sellerAccept, handoff, originHub, destinationHub]);
 
   const handleRefuse = useCallback(() => {
     clearInterval(timerRef.current);
@@ -123,22 +163,111 @@ export default function SellerConfirmationScreen() {
     );
   }
 
-  // Accepted state
+  // Accepted state — show success + bon d'envoi card
   if (result === 'accepted') {
     return (
       <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <View style={[styles.resultWrap, { paddingTop: insets.top + 80 }]}>
-          <Animated.View entering={FadeIn.duration(400)} style={styles.resultContent}>
+        <ScrollView
+          contentContainerStyle={[
+            styles.body,
+            { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 40 },
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          <Animated.View entering={FadeIn.duration(400)} style={{ alignItems: 'center', gap: Spacing.md }}>
             <View style={[styles.resultIcon, { backgroundColor: `${theme.success}15` }]}>
-              <Feather name="check-circle" size={52} color={theme.success} />
+              <Feather name="check-circle" size={48} color={theme.success} />
             </View>
-            <Text style={[styles.resultTitle, { color: theme.text }]}>C'est parti !</Text>
+            <Text style={[styles.resultTitle, { color: theme.text }]}>Livraison confirmée ✓</Text>
             <Text style={[styles.resultSub, { color: theme.textSecondary }]}>
-              Le groupe de mission est créé. Vous pouvez maintenant communiquer avec le
-              transporteur et l'acheteur.
+              Préparez votre colis — le bon d'envoi est prêt à imprimer.
             </Text>
           </Animated.View>
-        </View>
+
+          {/* Bon d'envoi card */}
+          <Animated.View
+            entering={FadeInUp.delay(200)}
+            style={[styles.bonEnvoiCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
+          >
+            <View style={styles.bonEnvoiHeader}>
+              <View style={[styles.iconCircle, { backgroundColor: `${theme.primary}12` }]}>
+                <Feather name="file-text" size={20} color={theme.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.cardTitle, { color: theme.text }]}>Bon d'envoi prêt</Text>
+                <Text style={[styles.cardSub, { color: theme.textSecondary }]}>
+                  Code colis : {handoff.packageTrackingNumber}
+                </Text>
+              </View>
+            </View>
+
+            <Text style={[styles.bonEnvoiBody, { color: theme.textSecondary }]}>
+              Imprimez ce bon et collez-le sur votre colis. Le transporteur scannera le QR code à
+              l'arrivée.
+            </Text>
+
+            <View style={styles.bonEnvoiActions}>
+              <TouchableOpacity
+                onPress={handleDownloadPdf}
+                disabled={pdfBusy}
+                style={[styles.bonEnvoiBtn, { borderColor: theme.primary, opacity: pdfBusy ? 0.6 : 1 }]}
+              >
+                <Feather name="download" size={16} color={theme.primary} />
+                <Text style={[styles.bonEnvoiBtnText, { color: theme.primary }]}>
+                  Télécharger
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handlePrintPdf}
+                disabled={pdfBusy}
+                style={{ flex: 1, opacity: pdfBusy ? 0.6 : 1 }}
+              >
+                <LinearGradient
+                  colors={[theme.primary, theme.primaryGradientEnd]}
+                  style={styles.bonEnvoiPrintBtn}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <Feather name="printer" size={16} color="#FFF" />
+                  <Text style={styles.bonEnvoiPrintText}>Imprimer</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+
+            {pdfError && (
+              <View style={[styles.pdfErrorBox, { backgroundColor: `${theme.warning}10`, borderColor: `${theme.warning}30` }]}>
+                <Feather name="alert-circle" size={14} color={theme.warning} />
+                <Text style={[styles.pdfErrorText, { color: theme.warning }]}>{pdfError}</Text>
+              </View>
+            )}
+          </Animated.View>
+
+          {/* Tip */}
+          <Animated.View
+            entering={FadeInUp.delay(300)}
+            style={[styles.tipCard, { backgroundColor: `${theme.accent}10`, borderColor: `${theme.accent}30` }]}
+          >
+            <Text style={[styles.tipText, { color: theme.textSecondary }]}>
+              💡 Conseil : si vous n'avez pas d'imprimante, vous pouvez écrire le numéro de colis
+              ({handoff.packageTrackingNumber}) directement sur le paquet.
+            </Text>
+          </Animated.View>
+
+          <Text style={[styles.retrieveNote, { color: theme.textSecondary }]}>
+            Vous pourrez retrouver ce bon d'envoi dans le détail de votre livraison à tout moment.
+          </Text>
+
+          <TouchableOpacity onPress={() => router.replace('/logistics/mission-group')} style={{ marginTop: Spacing.lg }}>
+            <LinearGradient
+              colors={[theme.primary, theme.primaryGradientEnd]}
+              style={styles.primaryBtn}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <Text style={styles.primaryBtnText}>Continuer</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </ScrollView>
       </View>
     );
   }
@@ -336,6 +465,47 @@ const styles = StyleSheet.create({
   resultIcon: { width: 100, height: 100, borderRadius: 50, alignItems: 'center', justifyContent: 'center' },
   resultTitle: { ...Typography.h1, textAlign: 'center' },
   resultSub: { ...Typography.body, textAlign: 'center' },
+
+  // Bon d'envoi card
+  bonEnvoiCard: {
+    marginTop: Spacing.xl,
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    gap: Spacing.md,
+  },
+  bonEnvoiHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+  bonEnvoiBody: { ...Typography.caption },
+  bonEnvoiActions: { flexDirection: 'row', gap: Spacing.sm },
+  bonEnvoiBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: Spacing.xs, paddingVertical: 12, paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.md, borderWidth: 1.5, flex: 1,
+  },
+  bonEnvoiBtnText: { ...Typography.button, fontSize: 14 },
+  bonEnvoiPrintBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: Spacing.xs, paddingVertical: 13, borderRadius: BorderRadius.md,
+  },
+  bonEnvoiPrintText: { ...Typography.button, color: '#FFF', fontSize: 14 },
+  pdfErrorBox: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm,
+    padding: Spacing.sm, borderRadius: BorderRadius.md, borderWidth: 1,
+  },
+  pdfErrorText: { ...Typography.caption, flex: 1 },
+  tipCard: {
+    marginTop: Spacing.md,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+  },
+  tipText: { ...Typography.caption },
+  retrieveNote: {
+    ...Typography.caption,
+    textAlign: 'center',
+    marginTop: Spacing.md,
+    paddingHorizontal: Spacing.md,
+  },
   primaryBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: Spacing.sm, paddingVertical: 14, paddingHorizontal: Spacing.xxl, borderRadius: BorderRadius.md,

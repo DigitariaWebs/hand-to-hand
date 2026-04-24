@@ -36,7 +36,7 @@ const RECENT_KEY = 'h2h_recent_searches';
 const MAX_RECENT = 5;
 const H_SIZE = 22;
 
-type SortKey = 'relevance' | 'price_asc' | 'price_desc' | 'newest' | 'best_deal';
+type SortKey = 'relevance' | 'price_asc' | 'price_desc' | 'newest' | 'best_deal' | 'best_seller_rating';
 type DealKey = 'excellent' | 'good' | 'fair' | 'above';
 
 type FilterState = {
@@ -67,6 +67,7 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: 'price_desc', label: 'Prix décroissant' },
   { key: 'newest', label: 'Plus récent' },
   { key: 'best_deal', label: 'Meilleures affaires' },
+  { key: 'best_seller_rating', label: 'Meilleure note vendeur' },
 ];
 
 const CONDITIONS: { key: ProductCondition; label: string }[] = [
@@ -156,6 +157,14 @@ function applyFiltersAndSort(
       break;
     case 'best_deal':
       result.sort((a, b) => b.dealScore - a.dealScore);
+      break;
+    case 'best_seller_rating':
+      result.sort((a, b) => {
+        const ra = a.seller.rating ?? 0;
+        const rb = b.seller.rating ?? 0;
+        if (rb !== ra) return rb - ra;
+        return (b.seller.reviewCount ?? 0) - (a.seller.reviewCount ?? 0);
+      });
       break;
     default:
       result.sort((a, b) => (b.isBoosted ? 1 : 0) - (a.isBoosted ? 1 : 0));

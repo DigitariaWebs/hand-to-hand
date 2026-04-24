@@ -29,6 +29,7 @@ import { formatPrice, formatDate, getConditionLabel } from '@/utils';
 import { currentMockUser } from '@/services/mock/users';
 import { mockProducts } from '@/services/mock/products';
 import { StatusToggle } from '@/components/logistics/StatusToggle';
+import { useWalletStore } from '@/stores/useWalletStore';
 
 const { width: SW } = Dimensions.get('window');
 const TABS = ['En vente', 'Vendus', 'Favoris', 'Avis'] as const;
@@ -124,7 +125,6 @@ const MOCK_REVIEWS = [
 const QUICK_ACTIONS = [
   { icon: 'package', label: 'Mes commandes', route: '/order/ord-001', color: '#3B82F6' },
   { icon: 'truck', label: 'Mes livraisons', route: '/logistics/delivery-tracking', color: '#10B981' },
-  { icon: 'clipboard', label: 'Historique livraisons', route: '/logistics/delivery-history', color: '#F59E0B' },
   { icon: 'dollar-sign', label: 'Mon portefeuille', route: '/settings/wallet', color: '#8B5CF6' },
   { icon: 'star', label: 'Transporteurs favoris', route: '/settings/favorite-transporters', color: '#F59E0B' },
   { icon: 'bar-chart-2', label: 'Statistiques', route: '/stats', color: '#6B7280' },
@@ -232,6 +232,7 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const user = currentMockUser;
+  const walletBalance = useWalletStore((s) => s.balance);
 
   const [activeTab, setActiveTab] = useState(0);
   const underlineX = useSharedValue(0);
@@ -384,6 +385,35 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
 
+          {/* Become transporter CTA */}
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => router.push('/become-transporter' as any)}
+            style={styles.becomeTransporterPressable}
+          >
+            <LinearGradient
+              colors={[theme.primaryLight, theme.accentLight]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.becomeTransporterCard}
+            >
+              <View style={[styles.becomeTransporterIconWrap, { backgroundColor: theme.surface }]}>
+                <Feather name="truck" size={24} color={theme.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.becomeTransporterTitle, { color: theme.text }]}>
+                  Générer des revenus sur votre trajet quotidien
+                </Text>
+                <Text style={[styles.becomeTransporterSub, { color: theme.textSecondary }]}>
+                  Livrez des colis en chemin avec H2H Logistic
+                </Text>
+                <Text style={[styles.becomeTransporterLink, { color: theme.primary }]}>
+                  En savoir plus →
+                </Text>
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+
           {/* Stats strip */}
           <View style={[styles.statsStrip, { borderColor: theme.border }]}>
             {[
@@ -462,29 +492,46 @@ export default function ProfileScreen() {
         <View style={styles.quickActionsSection}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Accès rapide</Text>
           <View style={styles.quickActionsGrid}>
-            {QUICK_ACTIONS.map((action) => (
-              <TouchableOpacity
-                key={action.label}
-                style={[
-                  styles.quickActionCard,
-                  { backgroundColor: theme.surface, shadowColor: theme.text },
-                ]}
-                onPress={() => router.push(action.route as any)}
-                activeOpacity={0.8}
-              >
-                <View
+            {QUICK_ACTIONS.map((action) => {
+              const isWallet = action.label === 'Mon portefeuille';
+              return (
+                <TouchableOpacity
+                  key={action.label}
                   style={[
-                    styles.quickActionIcon,
-                    { backgroundColor: `${action.color}15` },
+                    styles.quickActionCard,
+                    { backgroundColor: theme.surface, shadowColor: theme.text },
                   ]}
+                  onPress={() => router.push(action.route as any)}
+                  activeOpacity={0.8}
                 >
-                  <Feather name={action.icon as any} size={22} color={action.color} />
-                </View>
-                <Text style={[styles.quickActionLabel, { color: theme.text }]} numberOfLines={2}>
-                  {action.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                  <View
+                    style={[
+                      styles.quickActionIcon,
+                      { backgroundColor: `${action.color}15` },
+                    ]}
+                  >
+                    <Feather name={action.icon as any} size={22} color={action.color} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.quickActionLabel, { color: theme.text }]} numberOfLines={2}>
+                      {action.label}
+                    </Text>
+                    {isWallet && (
+                      <Text
+                        style={{
+                          fontFamily: 'Poppins_600SemiBold',
+                          fontSize: 12,
+                          color: theme.primary,
+                          marginTop: 2,
+                        }}
+                      >
+                        {walletBalance.toFixed(2).replace('.', ',')} €
+                      </Text>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
       </ScrollView>
@@ -589,6 +636,42 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   editBtnText: { ...Typography.button, fontSize: 13 },
+
+  // Become transporter CTA
+  becomeTransporterPressable: {
+    marginTop: Spacing.md,
+  },
+  becomeTransporterCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    padding: Spacing.md,
+    borderRadius: 16,
+  },
+  becomeTransporterIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  becomeTransporterTitle: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 14,
+    lineHeight: 19,
+  },
+  becomeTransporterSub: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 12,
+    lineHeight: 16,
+    marginTop: 2,
+  },
+  becomeTransporterLink: {
+    fontFamily: 'Poppins_500Medium',
+    fontSize: 12,
+    lineHeight: 16,
+    marginTop: 4,
+  },
 
   // Stats strip
   statsStrip: {

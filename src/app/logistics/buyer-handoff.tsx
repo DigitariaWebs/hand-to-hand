@@ -35,9 +35,10 @@ import { mockHubs } from '@/services/mock/hubs';
 import { haversineDistance, getProximityStatus, ProximityStatus } from '@/utils/haversine';
 import { ToleranceWindow } from '@/components/logistics/ToleranceWindow';
 import { useLogisticsStore } from '@/stores/useLogisticsStore';
+import QRCode from 'react-native-qrcode-svg';
 
 const { width: SW } = Dimensions.get('window');
-const OTP_VALIDITY_S = 10 * 60; // 10 minutes
+const QR_VALIDITY_S = 10 * 60; // 10 minutes
 
 // ── Confetti pieces ─────────────────────────────────────────────────────────
 const CONFETTI_COLORS = [
@@ -106,8 +107,12 @@ export default function BuyerHandoffScreen() {
 
   const handoff = mockHandoffTransaction;
   const hub = mockHubs.find((h) => h.id === handoff.destinationHubId) ?? mockHubs[2];
-  const otpCode = handoff.buyerOTPCode;
-  const otpDigits = otpCode.split('');
+  const buyerCode = handoff.buyerQRCode;
+  const qrPayload = JSON.stringify({
+    type: 'buyer' as const,
+    code: buyerCode,
+    missionId: handoff.id,
+  });
 
   const [step, setStep] = useState(0);
   const [proximity, setProximity] = useState<ProximityStatus>('far');
@@ -115,7 +120,7 @@ export default function BuyerHandoffScreen() {
   const [rating, setRating] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [otpSecondsLeft, setOtpSecondsLeft] = useState(OTP_VALIDITY_S);
+  const [qrSecondsLeft, setQrSecondsLeft] = useState(QR_VALIDITY_S);
 
   // Favorite transporter
   const { addFavoriteTransporter, removeFavoriteTransporter, isFavoriteTransporter } = useLogisticsStore();
@@ -141,11 +146,11 @@ export default function BuyerHandoffScreen() {
     }
   };
 
-  // OTP countdown
+  // QR countdown
   useEffect(() => {
     if (step !== 1) return;
     const id = setInterval(() => {
-      setOtpSecondsLeft((prev) => {
+      setQrSecondsLeft((prev) => {
         if (prev <= 1) { clearInterval(id); return 0; }
         return prev - 1;
       });
@@ -153,7 +158,7 @@ export default function BuyerHandoffScreen() {
     return () => clearInterval(id);
   }, [step]);
 
-  const formatOtpTimer = (s: number) => {
+  const formatQrTimer = (s: number) => {
     const m = Math.floor(s / 60);
     const sec = s % 60;
     return `${m}:${sec.toString().padStart(2, '0')}`;
@@ -180,16 +185,16 @@ export default function BuyerHandoffScreen() {
     })();
   }, []);
 
-  // DEV: simulate transporter entering OTP after 4s on step 1
+  // DEV: simulate transporter scanning QR after 4s on step 1
   useEffect(() => {
     if (step !== 1 || !__DEV__) return;
     const t = setTimeout(() => setStep(2), 4000);
     return () => clearTimeout(t);
   }, [step]);
 
-  const handleCopyOTP = async () => {
+  const handleCopyCode = async () => {
     try {
-      await Share.share({ message: otpCode });
+      await Share.share({ message: buyerCode });
     } catch {}
     setCopied(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
@@ -265,8 +270,8 @@ export default function BuyerHandoffScreen() {
             <View style={[styles.infoCard, { backgroundColor: `${theme.accent}15`, borderColor: `${theme.accent}30` }]}>
               <Feather name="info" size={16} color={theme.accent} />
               <Text style={[styles.infoText, { color: theme.textSecondary }]}>
-                Le transporteur vous attend avec votre colis. Vous lui communiquerez un code de
-                remise pour confirmer la réception.
+                Le transporteur vous attend avec votre colis. Lorsqu'il arrive, présentez-lui
+                simplement votre écran avec le QR code pour valider la remise.
               </Text>
             </View>
 
@@ -294,7 +299,7 @@ export default function BuyerHandoffScreen() {
           </Animated.View>
         )}
 
-        {/* ── Step 1: OTP code display ─────────────────────────────────── */}
+        {/* ── Step 1: QR code display ──────────────────────────────────── */}
         {step === 1 && (
           <Animated.View entering={FadeIn} style={styles.stepContainer}>
             <View style={styles.stepHeader}>
@@ -315,38 +320,49 @@ export default function BuyerHandoffScreen() {
               </View>
             </View>
 
-            {/* OTP display */}
-            <View style={[styles.otpContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-              <Text style={[styles.otpLabel, { color: theme.textSecondary }]}>
-                Communiquez ce code au transporteur
+            {/* QR code display */}
+            <View style={[styles.qrContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+              <Text style={[styles.qrLabel, { color: theme.text }]}>
+                Présentez ce QR code au transporteur pour valider la remise
               </Text>
-              <View style={styles.otpRow}>
-                {otpDigits.map((digit, i) => (
-                  <View key={i} style={[styles.otpBox, { backgroundColor: `${theme.primary}08`, borderColor: theme.primary }]}>
-                    <Text style={[styles.otpDigit, { color: theme.primary }]}>{digit}</Text>
-                  </View>
-                ))}
+
+              <View style={[styles.qrBox, { opacity: qrSecondsLeft === 0 ? 0.25 : 1 }]}>
+                <QRCode
+                  value={qrPayload}
+                  size={220}
+                  color="#111111"
+                  backgroundColor="#FFFFFF"
+                />
               </View>
-              <Text style={[styles.otpHint, { color: theme.textSecondary }]}>
-                Dictez ce code verbalement au transporteur pour valider la remise
+
+              <Text style={[styles.qrHint, { color: theme.textSecondary }]}>
+                Le transporteur scannera ce code puis le code du colis
               </Text>
 
               {/* Timer */}
               <View style={[styles.otpTimerRow, { backgroundColor: `${theme.warning}10` }]}>
                 <Feather name="clock" size={14} color={theme.warning} />
                 <Text style={[styles.otpTimer, { color: theme.warning }]}>
-                  Code valide pendant {formatOtpTimer(otpSecondsLeft)}
+                  {qrSecondsLeft === 0
+                    ? 'Votre code a expiré. Un nouveau sera généré automatiquement.'
+                    : `Code valide pendant ${formatQrTimer(qrSecondsLeft)}`}
                 </Text>
               </View>
+
+              {/* Fallback manual code */}
+              <Text style={[styles.fallbackText, { color: theme.textSecondary }]}>
+                En cas de problème, votre code manuel est :{' '}
+                <Text style={[styles.fallbackCode, { color: theme.primary }]}>{buyerCode}</Text>
+              </Text>
 
               {/* Copy button */}
               <TouchableOpacity
                 style={[styles.copyBtn, { borderColor: theme.primary }]}
-                onPress={handleCopyOTP}
+                onPress={handleCopyCode}
               >
                 <Feather name={copied ? 'check' : 'copy'} size={14} color={theme.primary} />
                 <Text style={[styles.copyText, { color: theme.primary }]}>
-                  {copied ? 'Copié !' : 'Copier le code'}
+                  {copied ? 'Copié !' : 'Copier le code manuel'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -528,19 +544,20 @@ const styles = StyleSheet.create({
   geoWarning: { ...Typography.caption, textAlign: 'center', marginTop: -Spacing.sm },
   avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#E5E7EB' },
 
-  // OTP display
-  otpContainer: {
+  // QR display
+  qrContainer: {
     alignItems: 'center', gap: Spacing.lg, padding: Spacing.xl,
     borderRadius: BorderRadius.lg, borderWidth: 1.5,
   },
-  otpLabel: { ...Typography.bodyMedium, textAlign: 'center' },
-  otpRow: { flexDirection: 'row', gap: Spacing.md, justifyContent: 'center' },
-  otpBox: {
-    width: 48, height: 56, borderRadius: BorderRadius.md, borderWidth: 2,
-    alignItems: 'center', justifyContent: 'center',
+  qrLabel: { ...Typography.bodyMedium, textAlign: 'center', fontFamily: 'Poppins_600SemiBold' },
+  qrBox: {
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    backgroundColor: '#FFFFFF',
   },
-  otpDigit: { fontFamily: 'Poppins_700Bold', fontSize: 24, lineHeight: 32 },
-  otpHint: { ...Typography.caption, textAlign: 'center', maxWidth: 260 },
+  qrHint: { ...Typography.caption, textAlign: 'center', maxWidth: 280 },
+  fallbackText: { ...Typography.caption, textAlign: 'center' },
+  fallbackCode: { fontFamily: 'Poppins_700Bold', letterSpacing: 1 },
   otpTimerRow: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
     paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: BorderRadius.full,

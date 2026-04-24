@@ -75,6 +75,8 @@ const en = {
     outOfStock: 'Out of stock',
     dealScore: 'Deal score',
     boosted: 'Boosted',
+    batteryTooltip:
+      'This is a measure of the battery capacity compared to when it was new. Lower capacity may reduce the number of hours of use between charges.',
   },
   auction: {
     currentBid: 'Current bid',

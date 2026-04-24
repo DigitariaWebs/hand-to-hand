@@ -84,6 +84,8 @@ const fr = {
     outOfStock: 'Rupture de stock',
     dealScore: 'Score offre',
     boosted: 'Mis en avant',
+    batteryTooltip:
+      "Ceci est une mesure de la capacité de la batterie comparée à ce qu'elle était neuve. Une capacité plus faible peut réduire le nombre d'heures d'utilisation possible entre les recharges.",
   },
 
   // Auction

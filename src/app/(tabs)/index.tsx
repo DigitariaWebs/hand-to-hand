@@ -39,6 +39,7 @@ import { Spacing } from '@/constants/Spacing';
 import { Categories } from '@/constants/Categories';
 import { mockProducts } from '@/services/mock/products';
 import { mockAuctions } from '@/services/mock/auctions';
+import { mockPepites } from '@/services/mock/pepites';
 import { Product, Auction } from '@/types/product';
 import { formatPrice, formatCountdown, formatRelativeTime } from '@/utils';
 import { ProductCard } from '@/components/product/ProductCard';
@@ -353,6 +354,54 @@ const AuctionCard = memo(function AuctionCard({
   );
 });
 
+// ─── Pépite card ────────────────────────────────────────────────────────────────
+
+const PepiteCard = memo(function PepiteCard({
+  product,
+  onPress,
+}: {
+  product: Product;
+  onPress: () => void;
+}) {
+  const colorScheme = useColorScheme();
+  const t = colorScheme === 'dark' ? Colors.dark : Colors.light;
+  const styles = createStyles(t);
+  const img = product.images[0]?.url ?? '';
+
+  return (
+    <TouchableOpacity style={styles.pepiteCard} onPress={onPress} activeOpacity={0.9}>
+      <View style={styles.pepiteImgWrap}>
+        <Image
+          source={{ uri: img }}
+          style={styles.pepiteImg}
+          contentFit="cover"
+          transition={{ effect: 'cross-dissolve', duration: 200 }}
+          placeholder={{ color: '#F3F4F6' }}
+        />
+        <View style={styles.pepiteBadge}>
+          <Text style={styles.pepiteBadgeText}>💎 Pépite</Text>
+        </View>
+      </View>
+      <View style={styles.pepiteInfo}>
+        <Text style={styles.pepiteTitle} numberOfLines={2}>
+          {product.title}
+        </Text>
+        <Text style={styles.pepitePrice}>{formatPrice(product.price)}</Text>
+        <View style={styles.pepiteSellerRow}>
+          <Image
+            source={{ uri: product.seller.avatar }}
+            style={styles.pepiteSellerAvatar}
+            contentFit="cover"
+          />
+          <Text style={styles.pepiteSellerName} numberOfLines={1}>
+            {product.seller.username}
+          </Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+});
+
 // ─── Live card ──────────────────────────────────────────────────────────────────
 
 const LiveCard = memo(function LiveCard({
@@ -537,6 +586,40 @@ export default function HomeScreen() {
 
         {/* ── Deal banner ── */}
         <DealBanner />
+
+        {/* ── Pépites du moment ── */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.sectionTitle}>💎 Pépites du moment</Text>
+              <Text style={styles.sectionSubtitle}>
+                Trouvailles rares et offres exceptionnelles
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => router.push('/pepites' as any)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.seeAll}>Voir tout</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.horizList}
+            decelerationRate="fast"
+            snapToInterval={212}
+            snapToAlignment="start"
+          >
+            {mockPepites.map((product) => (
+              <PepiteCard
+                key={product.id}
+                product={product}
+                onPress={() => router.push(`/product/${product.id}`)}
+              />
+            ))}
+          </ScrollView>
+        </View>
 
         {/* ── Auctions section ── */}
         <View style={styles.section}>
@@ -823,6 +906,13 @@ const createStyles = (t: ThemeColors) =>
       color: t.text,
       lineHeight: 22,
     },
+    sectionSubtitle: {
+      fontFamily: 'Poppins_400Regular',
+      fontSize: 11,
+      color: t.textSecondary,
+      lineHeight: 15,
+      marginTop: 2,
+    },
     seeAll: {
       fontFamily: 'Poppins_500Medium',
       fontSize: 13,
@@ -832,6 +922,80 @@ const createStyles = (t: ThemeColors) =>
     horizList: {
       paddingHorizontal: Spacing.lg,
       gap: 12,
+    },
+
+    // ── Pépite card ──
+    pepiteCard: {
+      width: 200,
+      height: 260,
+      backgroundColor: t.surface,
+      borderRadius: 12,
+      overflow: 'hidden',
+      ...Platform.select({
+        ios: {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.08,
+          shadowRadius: 4,
+        },
+        android: { elevation: 3 },
+      }),
+    },
+    pepiteImgWrap: {
+      width: 200,
+      height: 140,
+      backgroundColor: '#F3F4F6',
+      position: 'relative',
+    },
+    pepiteImg: { width: '100%', height: '100%' },
+    pepiteBadge: {
+      position: 'absolute',
+      top: 8,
+      left: 8,
+      backgroundColor: 'rgba(212,160,23,0.92)',
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 8,
+    },
+    pepiteBadgeText: {
+      fontFamily: 'Poppins_600SemiBold',
+      fontSize: 11,
+      color: '#FFFFFF',
+    },
+    pepiteInfo: {
+      padding: 10,
+      gap: 3,
+    },
+    pepiteTitle: {
+      fontFamily: 'Poppins_500Medium',
+      fontSize: 13,
+      color: t.text,
+      lineHeight: 17,
+    },
+    pepitePrice: {
+      fontFamily: 'Poppins_700Bold',
+      fontSize: 16,
+      color: t.primary,
+      lineHeight: 22,
+      marginTop: 2,
+    },
+    pepiteSellerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginTop: 3,
+    },
+    pepiteSellerAvatar: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      backgroundColor: '#E5E7EB',
+    },
+    pepiteSellerName: {
+      fontFamily: 'Poppins_400Regular',
+      fontSize: 11,
+      color: t.textSecondary,
+      flex: 1,
     },
 
     // ── Auction card ──

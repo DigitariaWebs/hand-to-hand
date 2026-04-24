@@ -24,5 +24,7 @@ export const mockHandoffTransaction: HandoffTransaction = {
   price: 85.0,
   deliveryFee: 4.5,
   sellerQRCode: 'HTH-QR-2024-0042-SELLER',
-  buyerOTPCode: '482715',
+  buyerQRCode: 'BUY-7E3B',
+  packageTrackingNumber: 'HTH-58A2F',
+  bonEnvoiGenerated: false,
 };

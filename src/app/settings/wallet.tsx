@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,74 +6,155 @@ import {
   useColorScheme,
   ScrollView,
   TouchableOpacity,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
-import { Feather } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import { Colors } from "@/constants/Colors";
-import { Typography } from "@/constants/Typography";
-import { Spacing, BorderRadius } from "@/constants/Spacing";
+  Platform,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { Feather } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withSequence,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
+import { Colors } from '@/constants/Colors';
+import { Typography } from '@/constants/Typography';
+import { Spacing, BorderRadius } from '@/constants/Spacing';
+import { useWalletStore } from '@/stores/useWalletStore';
+import type {
+  WalletFilter,
+  WalletTransaction,
+  TransactionType,
+} from '@/types/wallet';
+import { NumberTicker } from '@/components/ui/NumberTicker';
 
-// ── Mock data ─────────────────────────────────────────────────────────────
-
-const TRANSACTIONS = [
-  {
-    id: "t1",
-    type: "income" as const,
-    description: "Vente — Veste en cuir vintage",
-    amount: 85.0,
-    date: "8 avr. 2026",
-  },
-  {
-    id: "t2",
-    type: "expense" as const,
-    description: "Livraison — Nice → Marseille",
-    amount: -4.5,
-    date: "7 avr. 2026",
-  },
-  {
-    id: "t3",
-    type: "income" as const,
-    description: "Vente — Sac à main Longchamp",
-    amount: 45.0,
-    date: "5 avr. 2026",
-  },
-  {
-    id: "t4",
-    type: "expense" as const,
-    description: "Livraison — Cannes → Nice",
-    amount: -3.0,
-    date: "3 avr. 2026",
-  },
-  {
-    id: "t5",
-    type: "income" as const,
-    description: "Vente — Baskets Nike Air Max 90",
-    amount: 65.0,
-    date: "1 avr. 2026",
-  },
-  {
-    id: "t6",
-    type: "expense" as const,
-    description: "Frais de service — Commission",
-    amount: -8.5,
-    date: "30 mars 2026",
-  },
+const FILTER_TABS: { key: WalletFilter; label: string }[] = [
+  { key: 'all', label: 'Tout' },
+  { key: 'sales', label: 'Ventes' },
+  { key: 'purchases', label: 'Achats' },
+  { key: 'deliveries', label: 'Livraisons' },
 ];
 
-// ── Main screen ───────────────────────────────────────────────────────────
+type TxStyleToken = {
+  bgCircle: string;
+  textColor: string;
+  borderColor: string;
+  icon: keyof typeof Feather.glyphMap;
+};
+
+function getTxStyle(type: TransactionType, theme: typeof Colors.light): TxStyleToken {
+  switch (type) {
+    case 'sale':
+      return {
+        bgCircle: theme.successLight,
+        textColor: theme.success,
+        borderColor: theme.success,
+        icon: 'arrow-up-right',
+      };
+    case 'purchase':
+    case 'refund':
+      return {
+        bgCircle: theme.errorLight,
+        textColor: theme.error,
+        borderColor: theme.error,
+        icon: 'arrow-down-left',
+      };
+    case 'delivery_fee':
+      return {
+        bgCircle: theme.violetLight,
+        textColor: theme.violet,
+        borderColor: theme.violet,
+        icon: 'truck',
+      };
+    case 'delivery_earning':
+      return {
+        bgCircle: theme.goldLight,
+        textColor: theme.gold,
+        borderColor: theme.gold,
+        icon: 'package',
+      };
+    case 'withdrawal':
+      return {
+        bgCircle: theme.surfaceElevated,
+        textColor: theme.textSecondary,
+        borderColor: theme.border,
+        icon: 'download',
+      };
+  }
+}
+
+function matchesFilter(tx: WalletTransaction, filter: WalletFilter): boolean {
+  if (filter === 'all') return true;
+  if (filter === 'sales') return tx.type === 'sale';
+  if (filter === 'purchases') return tx.type === 'purchase' || tx.type === 'refund';
+  if (filter === 'deliveries')
+    return tx.type === 'delivery_fee' || tx.type === 'delivery_earning';
+  return true;
+}
+
+function formatShortDate(iso: string): string {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  } catch {
+    return iso;
+  }
+}
+
+function formatAmount(amount: number): string {
+  const abs = Math.abs(amount).toFixed(2).replace('.', ',');
+  const sign = amount > 0 ? '+' : '-';
+  return `${sign}${abs} €`;
+}
 
 export default function WalletScreen() {
   const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
+  const isDark = colorScheme === 'dark';
   const theme = isDark ? Colors.dark : Colors.light;
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
+  const { balance, pendingBalance, transactions, filter, setFilter } =
+    useWalletStore();
+
+  const translateY = useSharedValue(0);
+  const scale = useSharedValue(1);
+
+  useEffect(() => {
+    translateY.value = withRepeat(
+      withSequence(
+        withTiming(-6, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
+      ),
+      -1,
+    );
+    scale.value = withRepeat(
+      withSequence(
+        withTiming(1.015, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
+      ),
+      -1,
+    );
+  }, []);
+
+  const floatStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }, { scale: scale.value }],
+  }));
+
+  const filteredTx = useMemo(
+    () => transactions.filter((t) => matchesFilter(t, filter)),
+    [transactions, filter],
+  );
+
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Header */}
       <View
         style={[
           styles.header,
@@ -98,21 +179,49 @@ export default function WalletScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Balance card */}
-        <LinearGradient
-          colors={[theme.primary, theme.primaryGradientEnd]}
-          style={styles.balanceCard}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          <Text style={styles.balanceLabel}>Solde disponible</Text>
-          <Text style={styles.balanceValue}>215.50 €</Text>
-          <Text style={styles.balancePending}>
-            En attente de libération: 45.00 €
-          </Text>
-        </LinearGradient>
+        <View style={styles.heroWrap}>
+          <LinearGradient
+            colors={[theme.primary, theme.primaryDark]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[
+              styles.hero,
+              Platform.select({
+                ios: {
+                  shadowColor: theme.primary,
+                  shadowOffset: { width: 0, height: 8 },
+                  shadowOpacity: 0.4,
+                  shadowRadius: 24,
+                },
+                android: { elevation: 12 },
+              }),
+            ]}
+          >
+            <LinearGradient
+              colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0)']}
+              start={{ x: 1, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={StyleSheet.absoluteFillObject}
+            />
+            <View style={styles.heroContent}>
+              <Text style={styles.heroLabel}>Solde disponible</Text>
+              <Animated.View style={floatStyle}>
+                <NumberTicker
+                  value={balance}
+                  style={styles.heroAmount}
+                  decimals={2}
+                  currency="€"
+                />
+              </Animated.View>
+              {pendingBalance > 0 && (
+                <Text style={styles.heroPending}>
+                  En attente : {pendingBalance.toFixed(2).replace('.', ',')} €
+                </Text>
+              )}
+            </View>
+          </LinearGradient>
+        </View>
 
-        {/* Action buttons row */}
         <View style={styles.actionsRow}>
           <TouchableOpacity
             style={[styles.actionPill, { borderColor: theme.primary }]}
@@ -126,128 +235,114 @@ export default function WalletScreen() {
           <TouchableOpacity
             style={[styles.actionPill, { borderColor: theme.primary }]}
             activeOpacity={0.7}
+            onPress={() => router.push('/settings/transactions' as any)}
           >
             <Feather name="list" size={16} color={theme.primary} />
             <Text style={[styles.actionPillText, { color: theme.primary }]}>
-              Historique
+              Détails
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Section: Prochaine libération */}
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>
-          Prochaine libération
-        </Text>
-        <View
-          style={[
-            styles.card,
-            { backgroundColor: theme.surface, borderColor: theme.border },
-          ]}
-        >
-          <View style={styles.releaseHeader}>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.releaseOrder, { color: theme.text }]}>
-                Commande #HTH-0042 · 85.00€
-              </Text>
-              <Text
-                style={[styles.releaseDate, { color: theme.textSecondary }]}
-              >
-                Libération prévue: 12 avr. 2026
-              </Text>
-            </View>
-            <View
-              style={[
-                styles.statusBadge,
-                { backgroundColor: `${theme.warning}18` },
-              ]}
-            >
-              <Text style={[styles.statusBadgeText, { color: theme.warning }]}>
-                En attente de confirmation
-              </Text>
-            </View>
-          </View>
+        <View style={styles.historyHeader}>
+          <Text style={[styles.historyTitle, { color: theme.text }]}>Historique</Text>
         </View>
 
-        {/* Section: Transactions récentes */}
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>
-          Transactions récentes
-        </Text>
-        <View
-          style={[
-            styles.card,
-            { backgroundColor: theme.surface, borderColor: theme.border },
-          ]}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterRow}
         >
-          {TRANSACTIONS.map((tx, index) => {
-            const isIncome = tx.type === "income";
-            const isLast = index === TRANSACTIONS.length - 1;
-
+          {FILTER_TABS.map((tab) => {
+            const active = tab.key === filter;
             return (
-              <View
-                key={tx.id}
+              <TouchableOpacity
+                key={tab.key}
+                onPress={() => setFilter(tab.key)}
                 style={[
-                  styles.txRow,
-                  !isLast && {
-                    borderBottomWidth: StyleSheet.hairlineWidth,
-                    borderBottomColor: theme.border,
+                  styles.filterPill,
+                  {
+                    backgroundColor: active ? theme.primary : theme.surface,
+                    borderColor: active ? theme.primary : theme.border,
                   },
                 ]}
+                activeOpacity={0.75}
               >
-                {/* Icon */}
-                <View
-                  style={[
-                    styles.txIcon,
-                    {
-                      backgroundColor: isIncome
-                        ? `${theme.success}15`
-                        : `${theme.primary}12`,
-                    },
-                  ]}
-                >
-                  <Feather
-                    name={isIncome ? "arrow-up-right" : "arrow-down-left"}
-                    size={16}
-                    color={isIncome ? theme.success : theme.primary}
-                  />
-                </View>
-
-                {/* Description + date */}
-                <View style={{ flex: 1 }}>
-                  <Text
-                    style={[styles.txDescription, { color: theme.text }]}
-                    numberOfLines={1}
-                  >
-                    {tx.description}
-                  </Text>
-                  <Text
-                    style={[styles.txDate, { color: theme.textSecondary }]}
-                  >
-                    {tx.date}
-                  </Text>
-                </View>
-
-                {/* Amount */}
                 <Text
                   style={[
-                    styles.txAmount,
+                    styles.filterText,
+                    { color: active ? '#FFFFFF' : theme.textSecondary },
+                  ]}
+                >
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        <View style={styles.txList}>
+          {filteredTx.length === 0 ? (
+            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+              Aucune transaction pour ce filtre.
+            </Text>
+          ) : (
+            filteredTx.map((tx) => {
+              const tokens = getTxStyle(tx.type, theme);
+              return (
+                <View
+                  key={tx.id}
+                  style={[
+                    styles.txCard,
                     {
-                      color: isIncome ? theme.success : theme.textSecondary,
+                      backgroundColor: theme.surface,
+                      borderLeftColor: tokens.borderColor,
                     },
                   ]}
                 >
-                  {isIncome ? "+" : ""}
-                  {tx.amount.toFixed(2)}€
-                </Text>
-              </View>
-            );
-          })}
+                  <View
+                    style={[
+                      styles.txIcon,
+                      { backgroundColor: tokens.bgCircle },
+                    ]}
+                  >
+                    <Feather name={tokens.icon} size={16} color={tokens.textColor} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={[styles.txLabel, { color: theme.text }]}
+                      numberOfLines={1}
+                    >
+                      {tx.label}
+                    </Text>
+                    {tx.subtitle && (
+                      <Text
+                        style={[styles.txSubtitle, { color: theme.textSecondary }]}
+                        numberOfLines={1}
+                      >
+                        {tx.subtitle}
+                      </Text>
+                    )}
+                    <Text style={[styles.txDate, { color: theme.textMuted }]}>
+                      {formatShortDate(tx.date)}
+                    </Text>
+                  </View>
+                  <Text style={[styles.txAmount, { color: tokens.textColor }]}>
+                    {formatAmount(tx.amount)}
+                  </Text>
+                </View>
+              );
+            })
+          )}
         </View>
 
-        {/* Info card */}
         <View
           style={[
             styles.infoCard,
-            { backgroundColor: `${theme.primary}08`, borderColor: `${theme.primary}20` },
+            {
+              backgroundColor: `${theme.primary}08`,
+              borderColor: `${theme.primary}20`,
+            },
           ]}
         >
           <Feather
@@ -257,8 +352,8 @@ export default function WalletScreen() {
             style={{ marginTop: 2 }}
           />
           <Text style={[styles.infoText, { color: theme.textSecondary }]}>
-            Les fonds sont libérés après validation de la livraison par code
-            OTP. Comptez 24 à 48h pour le virement.
+            Les fonds sont libérés après validation de la livraison par scan QR.
+            Comptez 24 à 48h pour le virement.
           </Text>
         </View>
       </ScrollView>
@@ -266,14 +361,12 @@ export default function WalletScreen() {
   );
 }
 
-// ── Styles ────────────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
   container: { flex: 1 },
 
   header: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -281,127 +374,150 @@ const styles = StyleSheet.create({
   backBtn: {
     width: 36,
     height: 36,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  headerTitle: { ...Typography.h3, flex: 1, textAlign: "center" },
+  headerTitle: { ...Typography.h3, flex: 1, textAlign: 'center' },
 
   scrollContent: {
     padding: Spacing.lg,
     paddingBottom: 80,
   },
 
-  // Balance card
-  balanceCard: {
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.xl,
-    gap: Spacing.xs,
+  heroWrap: {
+    borderRadius: 24,
   },
-  balanceLabel: {
-    ...Typography.caption,
-    color: "#FFFFFF",
-    opacity: 0.85,
+  hero: {
+    borderRadius: 24,
+    height: 200,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  balanceValue: {
-    fontFamily: "Poppins_700Bold",
-    fontSize: 28,
-    lineHeight: 36,
-    color: "#FFFFFF",
+  heroContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
   },
-  balancePending: {
-    ...Typography.caption,
-    color: "#FFFFFF",
-    opacity: 0.7,
-    marginTop: Spacing.xs,
+  heroLabel: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.7)',
+  },
+  heroAmount: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 44,
+    lineHeight: 54,
+    color: '#FFFFFF',
+  },
+  heroPending: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.75)',
+    marginTop: 4,
   },
 
-  // Action pills
   actionsRow: {
-    flexDirection: "row",
+    flexDirection: 'row',
     gap: Spacing.md,
-    marginTop: Spacing.lg,
+    marginTop: Spacing.xl,
   },
   actionPill: {
     flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: Spacing.sm,
     paddingVertical: Spacing.md,
     borderRadius: BorderRadius.full,
     borderWidth: 1.5,
   },
-  actionPillText: {
-    ...Typography.button,
-  },
+  actionPillText: { ...Typography.button },
 
-  // Section title
-  sectionTitle: {
-    ...Typography.h3,
+  historyHeader: {
     marginTop: Spacing.xxl,
     marginBottom: Spacing.md,
   },
-
-  // Card
-  card: {
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-    overflow: "hidden",
+  historyTitle: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 18,
+    lineHeight: 24,
   },
 
-  // Release card
-  releaseHeader: {
-    padding: Spacing.lg,
-    gap: Spacing.md,
-  },
-  releaseOrder: {
-    ...Typography.bodyMedium,
-    fontFamily: "Poppins_600SemiBold",
-  },
-  releaseDate: {
-    ...Typography.caption,
-    marginTop: Spacing.xs,
-  },
-  statusBadge: {
-    alignSelf: "flex-start",
-    paddingHorizontal: Spacing.md,
+  filterRow: {
+    gap: Spacing.sm,
     paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.full,
+    paddingRight: Spacing.md,
   },
-  statusBadgeText: {
-    ...Typography.captionMedium,
+  filterPill: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 8,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+  },
+  filterText: {
+    fontFamily: 'Poppins_500Medium',
+    fontSize: 13,
+    lineHeight: 16,
   },
 
-  // Transaction row
-  txRow: {
-    flexDirection: "row",
-    alignItems: "center",
+  txList: {
+    marginTop: Spacing.md,
+    gap: Spacing.sm,
+  },
+  txCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: Spacing.md,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderLeftWidth: 3,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.06,
+        shadowRadius: 3,
+      },
+      android: { elevation: 2 },
+    }),
   },
   txIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 9,
-    alignItems: "center",
-    justifyContent: "center",
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  txDescription: {
+  txLabel: {
     ...Typography.bodyMedium,
+    fontFamily: 'Poppins_600SemiBold',
+  },
+  txSubtitle: {
+    ...Typography.caption,
+    marginTop: 1,
   },
   txDate: {
     ...Typography.caption,
+    fontSize: 11,
     marginTop: 2,
   },
   txAmount: {
-    ...Typography.bodyMedium,
-    fontFamily: "Poppins_600SemiBold",
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 16,
+    lineHeight: 22,
   },
 
-  // Info card
+  emptyText: {
+    ...Typography.caption,
+    textAlign: 'center',
+    paddingVertical: Spacing.xl,
+  },
+
   infoCard: {
-    flexDirection: "row",
+    flexDirection: 'row',
     gap: Spacing.md,
     padding: Spacing.lg,
     borderRadius: BorderRadius.lg,

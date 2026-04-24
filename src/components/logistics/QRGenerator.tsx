@@ -13,6 +13,7 @@ type Props = {
 
 const ROLE_LABELS: Record<HandoffRole, string> = {
   seller: 'Présentez ce code au transporteur',
+  buyer: 'Présentez ce code au transporteur',
   transporter_pickup: 'En attente du vendeur',
   transporter_delivery: "Présentez ce code à l'acheteur",
 };
