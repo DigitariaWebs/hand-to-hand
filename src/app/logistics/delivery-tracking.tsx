@@ -277,23 +277,21 @@ export default function DeliveryTrackingScreen() {
         )}
 
         {/* DEV ONLY: Simulate Failure */}
-        {__DEV__ && (
-          <TouchableOpacity
-            onPress={() => {
-              if (!mission) {
-                startMission(mockHandoffTransaction);
-                // Delay slightly to let state update
-                setTimeout(() => failDelivery('buyer_absent', 'Simulated failure from dev menu'), 100);
-              } else {
-                failDelivery('buyer_absent', 'Simulated failure from dev menu');
-              }
-            }}
-            style={{ marginTop: Spacing.xl, padding: Spacing.md, backgroundColor: '#FEF2F2', borderColor: '#EF4444', borderWidth: 1, borderRadius: 8, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: Spacing.sm }}
-          >
-            <Feather name="tool" size={16} color="#EF4444" />
-            <Text style={{ color: '#EF4444', fontFamily: 'Poppins_600SemiBold' }}>[DEV] Simuler un échec de livraison</Text>
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity
+          onPress={() => {
+            if (!mission) {
+              startMission(mockHandoffTransaction);
+              // Delay slightly to let state update
+              setTimeout(() => failDelivery('buyer_absent', 'Simulated failure from dev menu'), 100);
+            } else {
+              failDelivery('buyer_absent', 'Simulated failure from dev menu');
+            }
+          }}
+          style={{ marginTop: Spacing.xl, padding: Spacing.md, backgroundColor: '#FEF2F2', borderColor: '#EF4444', borderWidth: 1, borderRadius: 8, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: Spacing.sm }}
+        >
+          <Feather name="tool" size={16} color="#EF4444" />
+          <Text style={{ color: '#EF4444', fontFamily: 'Poppins_600SemiBold' }}>[DEV] Simuler un échec de livraison</Text>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );
