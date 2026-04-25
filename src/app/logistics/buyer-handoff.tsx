@@ -9,6 +9,8 @@ import {
   Image,
   Dimensions,
   Share,
+  Modal,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -94,6 +96,81 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
         </TouchableOpacity>
       ))}
     </View>
+  );
+}
+
+// ── Problem Sheet ───────────────────────────────────────────────────────────
+function ProblemSheet({ theme, orderId }: { theme: any; orderId: string }) {
+  const [visible, setVisible] = useState(false);
+  const router = useRouter();
+
+  const handleOptionSelect = (reason: string) => {
+    setVisible(false);
+    // Proceed to claim flow with the specific reason
+    router.push(`/order/insurance-claim?id=${orderId}&reason=${reason}`);
+  };
+
+  return (
+    <>
+      <TouchableOpacity
+        style={[styles.problemBtn, { borderColor: theme.error }]}
+        onPress={() => setVisible(true)}
+      >
+        <Feather name="alert-circle" size={16} color={theme.error} />
+        <Text style={[styles.problemBtnText, { color: theme.error }]}>Non, il y a un problème</Text>
+      </TouchableOpacity>
+
+      <Modal visible={visible} transparent animationType="fade">
+        <TouchableWithoutFeedback onPress={() => setVisible(false)}>
+          <View style={styles.sheetOverlay}>
+            <TouchableWithoutFeedback>
+              <Animated.View entering={FadeIn} style={[styles.sheetContainer, { backgroundColor: theme.surface }]}>
+                <View style={styles.sheetHeader}>
+                  <Text style={[styles.sheetTitle, { color: theme.text }]}>Signaler un problème</Text>
+                  <TouchableOpacity onPress={() => setVisible(false)} style={styles.sheetCloseBtn}>
+                    <Feather name="x" size={20} color={theme.textSecondary} />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={{ gap: Spacing.sm }}>
+                  <TouchableOpacity
+                    style={[styles.optionBtn, { borderColor: theme.border }]}
+                    onPress={() => handleOptionSelect('damaged')}
+                  >
+                    <Feather name="package" size={18} color={theme.text} />
+                    <Text style={[styles.optionText, { color: theme.text }]}>Colis endommagé</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.optionBtn, { borderColor: theme.border }]}
+                    onPress={() => handleOptionSelect('wrong_item')}
+                  >
+                    <Feather name="x-circle" size={18} color={theme.text} />
+                    <Text style={[styles.optionText, { color: theme.text }]}>Article non conforme</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.optionBtn, { borderColor: theme.border }]}
+                    onPress={() => handleOptionSelect('missing_parts')}
+                  >
+                    <Feather name="minus-circle" size={18} color={theme.text} />
+                    <Text style={[styles.optionText, { color: theme.text }]}>Pièces manquantes</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.optionBtn, { borderColor: theme.border }]}
+                    onPress={() => handleOptionSelect('other')}
+                  >
+                    <Feather name="help-circle" size={18} color={theme.text} />
+                    <Text style={[styles.optionText, { color: theme.text }]}>Autre problème</Text>
+                  </TouchableOpacity>
+                </View>
+              </Animated.View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+    </>
   );
 }
 
@@ -410,10 +487,7 @@ export default function BuyerHandoffScreen() {
               </LinearGradient>
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.problemBtn, { borderColor: theme.error }]}>
-              <Feather name="alert-circle" size={16} color={theme.error} />
-              <Text style={[styles.problemBtnText, { color: theme.error }]}>Non, il y a un problème</Text>
-            </TouchableOpacity>
+            <ProblemSheet theme={theme} orderId={handoff.orderId} />
 
             <Text style={[styles.verifyNote, { color: theme.textSecondary }]}>
               En confirmant, le paiement sera libéré automatiquement pour le vendeur et le transporteur.
@@ -597,4 +671,13 @@ const styles = StyleSheet.create({
   ratingAvatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#E5E7EB' },
   ratingTitle: { ...Typography.bodyMedium, fontFamily: 'Poppins_600SemiBold' },
   ratingThanks: { ...Typography.captionMedium },
+
+  // Problem Sheet
+  sheetOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  sheetContainer: { borderTopLeftRadius: BorderRadius.xl, borderTopRightRadius: BorderRadius.xl, padding: Spacing.xl, paddingBottom: 40 },
+  sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.lg },
+  sheetTitle: { ...Typography.h2 },
+  sheetCloseBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(0,0,0,0.05)', alignItems: 'center', justifyContent: 'center' },
+  optionBtn: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.md, borderRadius: BorderRadius.md, borderWidth: 1 },
+  optionText: { ...Typography.bodyMedium, fontFamily: 'Poppins_600SemiBold' },
 });

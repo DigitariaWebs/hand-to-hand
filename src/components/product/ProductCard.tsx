@@ -66,7 +66,6 @@ function ProductCardInner({ product, onPress }: Props) {
           style={styles.img}
           contentFit="cover"
           transition={{ effect: 'cross-dissolve', duration: 250 }}
-          placeholder={{ color: '#F3F4F6' }}
         />
 
         {/* Deal badge — top left */}

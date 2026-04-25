@@ -39,6 +39,10 @@ import { mockHubs } from '@/services/mock/hubs';
 import { HowItWorksSheet } from '@/components/logistics/HowItWorksSheet';
 import { calculateCo2Saved, formatCo2, TransportType } from '@/utils/carbon';
 import { useLogisticsStore } from '@/stores/useLogisticsStore';
+import { DELIVERY_LIMITS } from '@/constants/deliveryLimits';
+import { COVERAGE_DETAILS } from '@/types/insurance';
+import { getInsuranceCoverages } from '@/services/mock/insurance';
+import type { InsuranceTier } from '@/types/insurance';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -180,6 +184,17 @@ export default function CheckoutScreen() {
     city: '',
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [insuranceTier, setInsuranceTier] = useState<InsuranceTier>('basic');
+  const [showCoverageDetails, setShowCoverageDetails] = useState(false);
+
+  // Value cap
+  const isAboveValueCap = product.price > DELIVERY_LIMITS.H2H_MAX_VALUE;
+  const isNearValueCap = product.price > DELIVERY_LIMITS.PREMIUM_RECOMMEND_THRESHOLD;
+
+  // Insurance coverages
+  const coverages = getInsuranceCoverages(product.price);
+  const selectedCoverage = coverages.find((c) => c.tier === insuranceTier) ?? coverages[0];
+  const insurancePremium = deliveryMethod === 'h2h' ? selectedCoverage.premium : 0;
 
   const placeOrder = useCartStore((s) => s.placeOrder);
   const expiryRef = useRef<TextInput>(null);
@@ -188,7 +203,8 @@ export default function CheckoutScreen() {
   // Pricing
   const itemPrice = product.price * quantity;
   const deliveryFee = DELIVERY_FEES[deliveryMethod];
-  const { serviceFee, total } = calculatePricing(itemPrice, deliveryFee);
+  const { serviceFee, total: baseTotal } = calculatePricing(itemPrice, deliveryFee);
+  const total = baseTotal + insurancePremium;
 
   // Card validation
   const rawDigits = cardForm.number.replace(/\D/g, '');
@@ -343,10 +359,12 @@ export default function CheckoutScreen() {
 
         <RadioCard
           selected={deliveryMethod === 'h2h'}
-          onPress={() => setDeliveryMethod('h2h')}
+          onPress={() => {
+            if (!isAboveValueCap) setDeliveryMethod('h2h');
+          }}
           theme={theme}
         >
-          <View style={styles.deliveryRow}>
+          <View style={[styles.deliveryRow, isAboveValueCap && { opacity: 0.45 }]}>
             <View style={[styles.deliveryIcon, { backgroundColor: `${theme.primary}12` }]}>
               <Feather name="package" size={18} color={theme.primary} />
             </View>
@@ -355,12 +373,34 @@ export default function CheckoutScreen() {
                 Hand to Hand Logistics
               </Text>
               <Text style={[styles.deliverySub, { color: theme.textSecondary }]}>
-                Transporteur particulier · 24–72h
+                {isAboveValueCap
+                  ? `Indisponible au-dessus de ${DELIVERY_LIMITS.H2H_MAX_VALUE}€`
+                  : 'Transporteur particulier · 24–72h'}
               </Text>
             </View>
-            <Text style={[styles.deliveryPrice, { color: theme.primary }]}>2–5€</Text>
+            {isAboveValueCap ? (
+              <Feather name="lock" size={16} color={theme.textMuted} />
+            ) : (
+              <Text style={[styles.deliveryPrice, { color: theme.primary }]}>2–5€</Text>
+            )}
           </View>
         </RadioCard>
+
+        {isAboveValueCap && (
+          <Animated.View entering={FadeIn}>
+            <View
+              style={[
+                styles.ecoBanner,
+                { backgroundColor: `${theme.warning}10`, borderColor: `${theme.warning}30` },
+              ]}
+            >
+              <Feather name="info" size={14} color={theme.warning} />
+              <Text style={[styles.ecoBannerText, { color: theme.warning }]}>
+                La livraison Hand to Hand est disponible pour les articles jusqu'à {DELIVERY_LIMITS.H2H_MAX_VALUE}€. Pour les articles de plus grande valeur, utilisez l'envoi postal ou la remise en main propre.
+              </Text>
+            </View>
+          </Animated.View>
+        )}
 
         <RadioCard
           selected={deliveryMethod === 'handoff'}
@@ -538,6 +578,131 @@ export default function CheckoutScreen() {
           </Animated.View>
         )}
 
+        {/* ── Insurance selection (H2H only) ──────────────────────────── */}
+        {deliveryMethod === 'h2h' && (
+          <Animated.View entering={FadeIn}>
+            <SectionTitle title="🛡️ Protection de votre achat" theme={theme} />
+
+            {/* Basic tier */}
+            <TouchableOpacity
+              style={[
+                styles.insuranceCard,
+                {
+                  backgroundColor: insuranceTier === 'basic' ? `${theme.success}08` : theme.surface,
+                  borderColor: insuranceTier === 'basic' ? theme.success : theme.border,
+                  borderWidth: insuranceTier === 'basic' ? 2 : 1,
+                },
+              ]}
+              onPress={() => setInsuranceTier('basic')}
+              activeOpacity={0.8}
+            >
+              <View style={styles.insuranceHeader}>
+                <View style={[styles.insuranceIconCircle, { backgroundColor: `${theme.success}15` }]}>
+                  <Feather name="shield" size={18} color={theme.success} />
+                </View>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={[styles.insuranceTitle, { color: theme.text }]}>Protection de base</Text>
+                  <Text style={[styles.insuranceSub, { color: theme.textSecondary }]}>
+                    Couverture jusqu'à {DELIVERY_LIMITS.BASE_INSURANCE_COVERAGE}€
+                  </Text>
+                </View>
+                <Text style={[styles.insurancePrice, { color: theme.success }]}>Incluse ✓</Text>
+              </View>
+              <Text style={[styles.insuranceDesc, { color: theme.textSecondary }]}>
+                Couvre les dommages et la perte du colis pendant le transport.
+              </Text>
+            </TouchableOpacity>
+
+            {/* Premium tier */}
+            <TouchableOpacity
+              style={[
+                styles.insuranceCard,
+                {
+                  backgroundColor: insuranceTier === 'premium' ? `${theme.gold}08` : theme.surface,
+                  borderColor: insuranceTier === 'premium' ? theme.gold : theme.border,
+                  borderWidth: insuranceTier === 'premium' ? 2 : 1,
+                  marginTop: Spacing.sm,
+                },
+              ]}
+              onPress={() => setInsuranceTier('premium')}
+              activeOpacity={0.8}
+            >
+              <View style={styles.insuranceHeader}>
+                <View style={[styles.insuranceIconCircle, { backgroundColor: `${theme.gold}15` }]}>
+                  <Feather name="shield" size={18} color={theme.gold} />
+                </View>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
+                    <Text style={[styles.insuranceTitle, { color: theme.text }]}>Protection Premium</Text>
+                    {isNearValueCap && (
+                      <View style={[styles.recommendBadge, { backgroundColor: `${theme.gold}20` }]}>
+                        <Text style={[styles.recommendText, { color: theme.gold }]}>Recommandé</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={[styles.insuranceSub, { color: theme.textSecondary }]}>
+                    Couverture jusqu'à {Math.min(product.price, DELIVERY_LIMITS.H2H_MAX_VALUE)}€
+                  </Text>
+                </View>
+                <Text style={[styles.insurancePrice, { color: theme.gold }]}>
+                  +{formatPrice(coverages[1]?.premium ?? 0)}
+                </Text>
+              </View>
+              <Text style={[styles.insuranceDesc, { color: theme.textSecondary }]}>
+                Couverture complète : dommages, perte, non-conformité, retard.
+              </Text>
+            </TouchableOpacity>
+
+            {/* Coverage details toggle */}
+            <TouchableOpacity
+              onPress={() => setShowCoverageDetails(!showCoverageDetails)}
+              style={styles.coverageToggle}
+            >
+              <Feather
+                name={showCoverageDetails ? 'chevron-up' : 'chevron-down'}
+                size={14}
+                color={theme.primary}
+              />
+              <Text style={[styles.coverageToggleText, { color: theme.primary }]}>
+                {showCoverageDetails ? 'Masquer les détails' : 'Voir ce qui est couvert'}
+              </Text>
+            </TouchableOpacity>
+
+            {showCoverageDetails && (
+              <Animated.View entering={FadeIn}>
+                <View
+                  style={[
+                    styles.coverageCard,
+                    { backgroundColor: theme.surface, borderColor: theme.border },
+                  ]}
+                >
+                  {COVERAGE_DETAILS.map((detail) => {
+                    const isCovered =
+                      insuranceTier === 'premium' ? detail.coveredByPremium : detail.coveredByBasic;
+                    return (
+                      <View key={detail.key} style={styles.coverageRow}>
+                        <Feather
+                          name={isCovered ? 'check-circle' : 'x-circle'}
+                          size={14}
+                          color={isCovered ? theme.success : theme.textMuted}
+                        />
+                        <Text
+                          style={[
+                            styles.coverageLabel,
+                            { color: isCovered ? theme.text : theme.textMuted },
+                          ]}
+                        >
+                          {detail.label}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              </Animated.View>
+            )}
+          </Animated.View>
+        )}
+
         {/* ── Price breakdown ────────────────────────────────────────── */}
         <View
           style={[
@@ -561,6 +726,20 @@ export default function CheckoutScreen() {
               {deliveryFee === 0 ? 'Gratuit' : formatPrice(deliveryFee)}
             </Text>
           </View>
+          {deliveryMethod === 'h2h' && (
+            <View style={styles.priceRow}>
+              <Text style={[styles.priceLabel, { color: theme.textSecondary }]}>
+                Protection {insuranceTier === 'premium' ? 'Premium' : 'acheteur'}
+              </Text>
+              {insurancePremium > 0 ? (
+                <Text style={[styles.priceValue, { color: theme.gold }]}>
+                  {formatPrice(insurancePremium)}
+                </Text>
+              ) : (
+                <Text style={[styles.priceInclus, { color: theme.success }]}>Incluse ✓</Text>
+              )}
+            </View>
+          )}
           <View style={styles.priceRow}>
             <Text style={[styles.priceLabel, { color: theme.textSecondary }]}>
               Frais de service (5%)
@@ -569,12 +748,14 @@ export default function CheckoutScreen() {
               {formatPrice(serviceFee)}
             </Text>
           </View>
-          <View style={styles.priceRow}>
-            <Text style={[styles.priceLabel, { color: theme.textSecondary }]}>
-              Protection acheteur
-            </Text>
-            <Text style={[styles.priceInclus, { color: theme.success }]}>Incluse ✓</Text>
-          </View>
+          {deliveryMethod !== 'h2h' && (
+            <View style={styles.priceRow}>
+              <Text style={[styles.priceLabel, { color: theme.textSecondary }]}>
+                Protection acheteur
+              </Text>
+              <Text style={[styles.priceInclus, { color: theme.success }]}>Incluse ✓</Text>
+            </View>
+          )}
           <View style={[styles.priceDivider, { backgroundColor: theme.border }]} />
           <View style={styles.priceRow}>
             <Text style={[styles.totalLabel, { color: theme.text }]}>Total</Text>
@@ -1119,4 +1300,53 @@ const styles = StyleSheet.create({
   payBtnText: { ...Typography.button, color: '#FFF', fontSize: 16 },
 
   sectionTitle: { ...Typography.h3 },
+
+  // Insurance selection
+  insuranceCard: {
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    gap: Spacing.sm,
+  },
+  insuranceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  insuranceIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  insuranceTitle: { ...Typography.bodyMedium, fontFamily: 'Poppins_600SemiBold' },
+  insuranceSub: { ...Typography.caption },
+  insurancePrice: { ...Typography.bodyMedium, fontFamily: 'Poppins_700Bold' },
+  insuranceDesc: { ...Typography.caption, paddingLeft: 52 },
+  recommendBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.full,
+  },
+  recommendText: { ...Typography.captionMedium, fontSize: 10 },
+  coverageToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.xs,
+    paddingVertical: Spacing.sm,
+  },
+  coverageToggleText: { ...Typography.captionMedium },
+  coverageCard: {
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    gap: Spacing.sm,
+  },
+  coverageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  coverageLabel: { ...Typography.caption },
 });

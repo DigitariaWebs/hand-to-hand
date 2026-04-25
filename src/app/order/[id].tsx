@@ -457,6 +457,50 @@ export default function OrderTrackingScreen() {
           <Feather name="download" size={16} color={theme.primary} />
         </TouchableOpacity>
 
+        {/* ── Insurance / Protection card ────────────────────────────── */}
+        <View
+          style={[
+            styles.insuranceCard,
+            { backgroundColor: theme.surface, borderColor: theme.border },
+          ]}
+        >
+          <View style={styles.insuranceCardHeader}>
+            <View style={[styles.insuranceCardIcon, { backgroundColor: `${theme.success}15` }]}>
+              <Feather name="shield" size={18} color={theme.success} />
+            </View>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={[styles.insuranceCardTitle, { color: theme.text }]}>
+                Protection acheteur
+              </Text>
+              <Text style={[styles.insuranceCardSub, { color: theme.textSecondary }]}>
+                Votre achat est couvert par la protection de base
+              </Text>
+            </View>
+            <View
+              style={[
+                styles.insuranceBadge,
+                { backgroundColor: `${theme.success}15` },
+              ]}
+            >
+              <Text style={[styles.insuranceBadgeText, { color: theme.success }]}>
+                Actif
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={[styles.claimBtn, { borderColor: theme.primary }]}
+            onPress={() => router.push(`/order/insurance-claim?id=${orderNumber}`)}
+          >
+            <Feather name="alert-circle" size={14} color={theme.primary} />
+            <Text style={[styles.claimBtnText, { color: theme.primary }]}>
+              Ouvrir une réclamation
+            </Text>
+          </TouchableOpacity>
+          <Text style={[styles.claimWindowNote, { color: theme.textMuted }]}>
+            Vous disposez de 7 jours après la livraison pour signaler un problème.
+          </Text>
+        </View>
+
         {/* ── Help link ────────────────────────────────────────────────── */}
         <TouchableOpacity style={styles.helpRow}>
           <Feather name="help-circle" size={16} color={theme.textSecondary} />
@@ -688,4 +732,43 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   helpText: { ...Typography.body },
+
+  // Insurance card
+  insuranceCard: {
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    gap: Spacing.md,
+  },
+  insuranceCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  insuranceCardIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  insuranceCardTitle: { ...Typography.bodyMedium, fontFamily: 'Poppins_600SemiBold' },
+  insuranceCardSub: { ...Typography.caption },
+  insuranceBadge: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 3,
+    borderRadius: BorderRadius.full,
+  },
+  insuranceBadgeText: { ...Typography.captionMedium, fontSize: 10, fontFamily: 'Poppins_700Bold' },
+  claimBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1.5,
+  },
+  claimBtnText: { ...Typography.button },
+  claimWindowNote: { ...Typography.caption, textAlign: 'center' },
 });

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { Hub, Route, HandoffTransaction, RouteType, TransportMode, PackageSize, WeekDay } from '@/types/logistics';
+import { Hub, Route, HandoffTransaction, RouteType, TransportMode, PackageSize, WeekDay, DeliveryFailureReason } from '@/types/logistics';
+import { DELIVERY_LIMITS } from '@/constants/deliveryLimits';
 import {
   getToleranceStatus,
   getToleranceWindow,
@@ -55,7 +56,10 @@ export type MissionStatus =
   | 'in_transit'
   | 'delivery_pending'
   | 'completed'
-  | 'cancelled';
+  | 'cancelled'
+  | 'delivery_failed'
+  | 'redelivery_pending'
+  | 'redelivery_scheduled';
 
 export type GroupMember = {
   role: 'seller' | 'transporter' | 'buyer';
@@ -122,6 +126,11 @@ type LogisticsStore = {
   sellerAccept: () => void;
   cancelMission: () => void;
   completeMission: () => void;
+
+  // Delivery failure & re-delivery
+  failDelivery: (reason: DeliveryFailureReason, note?: string) => void;
+  scheduleRedelivery: (newHubId: string, newTime: string) => void;
+  startRedelivery: () => void;
 
   // Hub locking actions
   lockHub: (hubId: string) => void;
@@ -250,6 +259,76 @@ export const useLogisticsStore = create<LogisticsStore>((set, get) => ({
       mission: { ...m, status: 'completed' },
       lockedHubId: null,
       isHubLocked: false,
+    });
+  },
+
+  // Delivery failure & re-delivery
+  failDelivery: (reason, note) => {
+    const m = get().mission;
+    if (!m) return;
+    const handoff = m.handoff;
+    const currentAttempt = handoff.currentAttempt;
+    const updatedAttempts = handoff.deliveryAttempts.map((a) =>
+      a.attemptNumber === currentAttempt
+        ? { ...a, status: 'failed' as const, failureReason: reason, failureNote: note }
+        : a,
+    );
+    const canRetry = currentAttempt < (handoff.maxAttempts || DELIVERY_LIMITS.MAX_DELIVERY_ATTEMPTS);
+    set({
+      mission: {
+        ...m,
+        status: canRetry ? 'delivery_failed' : 'cancelled',
+        handoff: { ...handoff, status: canRetry ? 'delivery_failed' : 'disputed', deliveryAttempts: updatedAttempts },
+      },
+    });
+  },
+
+  scheduleRedelivery: (newHubId, newTime) => {
+    const m = get().mission;
+    if (!m) return;
+    const handoff = m.handoff;
+    const nextAttempt = handoff.currentAttempt + 1;
+    const newAttemptEntry = {
+      attemptNumber: nextAttempt,
+      scheduledAt: newTime,
+      hubId: newHubId,
+      status: 'scheduled' as const,
+      transporterId: handoff.transporterId,
+    };
+    set({
+      mission: {
+        ...m,
+        status: 'redelivery_scheduled',
+        handoff: {
+          ...handoff,
+          status: 'redelivery_pending',
+          currentAttempt: nextAttempt,
+          destinationHubId: newHubId,
+          deliveryAttempts: [...handoff.deliveryAttempts, newAttemptEntry],
+        },
+      },
+    });
+  },
+
+  startRedelivery: () => {
+    const m = get().mission;
+    if (!m) return;
+    const handoff = m.handoff;
+    const updatedAttempts = handoff.deliveryAttempts.map((a) =>
+      a.attemptNumber === handoff.currentAttempt
+        ? { ...a, status: 'in_progress' as const }
+        : a,
+    );
+    set({
+      mission: {
+        ...m,
+        status: 'in_transit',
+        handoff: {
+          ...handoff,
+          status: 'redelivery_in_progress',
+          deliveryAttempts: updatedAttempts,
+        },
+      },
     });
   },
 

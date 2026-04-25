@@ -297,7 +297,7 @@ export default function ProfileScreen() {
           colors={[theme.primary, theme.primaryGradientEnd]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
-          style={[styles.cover, { paddingTop: insets.top + 8 }]}
+          style={[styles.cover, { paddingTop: insets.top + 20 }]}
         >
           {/* Settings shortcut */}
           <TouchableOpacity
@@ -512,19 +512,12 @@ export default function ProfileScreen() {
                   >
                     <Feather name={action.icon as any} size={22} color={action.color} />
                   </View>
-                  <View style={{ flex: 1 }}>
+                  <View style={{ width: '100%', gap: 2 }}>
                     <Text style={[styles.quickActionLabel, { color: theme.text }]} numberOfLines={2}>
                       {action.label}
                     </Text>
                     {isWallet && (
-                      <Text
-                        style={{
-                          fontFamily: 'Poppins_600SemiBold',
-                          fontSize: 12,
-                          color: theme.primary,
-                          marginTop: 2,
-                        }}
-                      >
+                      <Text style={styles.walletBalanceText}>
                         {walletBalance.toFixed(2).replace('.', ',')} €
                       </Text>
                     )}
@@ -544,7 +537,7 @@ const styles = StyleSheet.create({
 
   // Cover
   cover: {
-    height: 100,
+    height: 130,
     position: 'relative',
   },
   settingsBtn: {
@@ -809,28 +802,33 @@ const styles = StyleSheet.create({
   },
   quickActionCard: {
     width: (SW - Spacing.lg * 2 - Spacing.md) / 2,
-    height: 80,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    paddingHorizontal: Spacing.md,
+    height: 116,
+    borderRadius: 16,
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    padding: Spacing.md,
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.07,
+    shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
   },
   quickActionIcon: {
     width: 40,
     height: 40,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   quickActionLabel: {
-    flex: 1,
     ...Typography.captionMedium,
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 12,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  walletBalanceText: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 14,
+    color: Colors.light.primary,
   },
 });

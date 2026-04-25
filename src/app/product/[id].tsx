@@ -292,7 +292,6 @@ function CompactCard({ product, onPress }: { product: Product; onPress: () => vo
         style={compact.img}
         contentFit="cover"
         transition={{ effect: 'cross-dissolve', duration: 200 }}
-        placeholder={{ color: '#F3F4F6' }}
       />
       <View style={compact.info}>
         <Text style={compact.title} numberOfLines={2}>
@@ -485,7 +484,6 @@ export default function ProductDetailScreen() {
                 style={{ width: W, height: GALLERY_H }}
                 contentFit="cover"
                 transition={{ effect: 'cross-dissolve', duration: 250 }}
-                placeholder={{ color: '#F3F4F6' }}
               />
             ))}
           </ScrollView>

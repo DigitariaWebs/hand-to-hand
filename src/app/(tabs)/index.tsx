@@ -336,7 +336,6 @@ const AuctionCard = memo(function AuctionCard({
         style={styles.auctionImg}
         contentFit="cover"
         transition={{ effect: 'cross-dissolve', duration: 200 }}
-        placeholder={{ color: '#F3F4F6' }}
       />
       <View style={styles.auctionInfo}>
         <Text style={styles.auctionTitle} numberOfLines={2}>
@@ -376,7 +375,6 @@ const PepiteCard = memo(function PepiteCard({
           style={styles.pepiteImg}
           contentFit="cover"
           transition={{ effect: 'cross-dissolve', duration: 200 }}
-          placeholder={{ color: '#F3F4F6' }}
         />
         <View style={styles.pepiteBadge}>
           <Text style={styles.pepiteBadgeText}>💎 Pépite</Text>
@@ -420,7 +418,6 @@ const LiveCard = memo(function LiveCard({
           style={styles.liveImg}
           contentFit="cover"
           transition={{ effect: 'cross-dissolve', duration: 200 }}
-          placeholder={{ color: '#1A1A1E' }}
         />
         {/* EN DIRECT badge */}
         <View style={styles.liveBadge}>
@@ -438,7 +435,6 @@ const LiveCard = memo(function LiveCard({
           source={{ uri: session.avatar }}
           style={styles.liveAvatar}
           contentFit="cover"
-          placeholder={{ color: '#F3F4F6' }}
         />
         <View style={{ flex: 1 }}>
           <Text style={styles.liveTitle} numberOfLines={1}>{session.title}</Text>

@@ -13,6 +13,7 @@ import { mockHubs } from '@/services/mock/hubs';
 import { mockHandoffTransaction } from '@/services/mock/handoffs';
 import { ToleranceWindow } from '@/components/logistics/ToleranceWindow';
 import { DeliveryMap } from '@/components/logistics/DeliveryMap';
+import { DELIVERY_LIMITS } from '@/constants/deliveryLimits';
 
 // ── Timeline builder ──────────────────────────────────────────────────────
 
@@ -25,7 +26,9 @@ type TimelineStep = {
 
 const STATUS_ORDER: MissionStatus[] = [
   'pending_transporter', 'pending_seller', 'seller_timer', 'group_created',
-  'pickup_pending', 'picked_up', 'in_transit', 'delivery_pending', 'completed',
+  'pickup_pending', 'picked_up', 'in_transit', 'delivery_pending',
+  'delivery_failed', 'redelivery_pending', 'redelivery_scheduled',
+  'completed',
 ];
 
 function buildTimeline(
@@ -47,6 +50,9 @@ function buildTimeline(
     { label: 'Colis pris en charge', detail: 'QR code validé', icon: 'package' },
     { label: 'Transporteur en route', detail: `Vers ${destHubName}`, icon: 'navigation' },
     { label: 'Livraison au hub acheteur', detail: `${destHubName} · ${destWindow}`, icon: 'map-pin' },
+    { label: 'Tentative échouée', detail: 'Re-livraison possible', icon: 'alert-triangle' },
+    { label: 'Re-livraison programmée', detail: 'Nouvelle tentative en cours', icon: 'refresh-cw' },
+    { label: 'Re-livraison en route', detail: `Vers ${destHubName}`, icon: 'navigation' },
     { label: 'Transaction complétée', detail: 'Paiement débloqué', icon: 'dollar-sign' },
   ];
 
@@ -65,7 +71,7 @@ export default function DeliveryTrackingScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  const { mission, isHubLocked, lockedHubId } = useLogisticsStore();
+  const { mission, isHubLocked, lockedHubId, failDelivery, startMission } = useLogisticsStore();
   const handoff = mission?.handoff ?? mockHandoffTransaction;
   const missionStatus = mission?.status ?? 'in_transit';
 
@@ -215,6 +221,35 @@ export default function DeliveryTrackingScreen() {
           </View>
         )}
 
+        {/* Delivery failed banner */}
+        {(missionStatus === 'delivery_failed' || missionStatus === 'redelivery_pending' || missionStatus === 'redelivery_scheduled') && (
+          <View style={[styles.awarenessCard, { backgroundColor: `${theme.warning}08`, borderColor: `${theme.warning}30` }]}>
+            <View style={styles.awarenessHeader}>
+              <Feather name="alert-triangle" size={18} color={theme.warning} />
+              <Text style={[styles.awarenessTitle, { color: theme.warning }]}>
+                {missionStatus === 'delivery_failed'
+                  ? 'Livraison non aboutie'
+                  : 'Re-livraison programmée'}
+              </Text>
+            </View>
+            <Text style={[styles.awarenessBody, { color: theme.textSecondary }]}>
+              {missionStatus === 'delivery_failed'
+                ? `La tentative de livraison ${handoff.currentAttempt}/${handoff.maxAttempts || DELIVERY_LIMITS.MAX_DELIVERY_ATTEMPTS} n'a pas abouti. Vous pouvez programmer une nouvelle livraison.`
+                : `Une nouvelle livraison a été programmée (tentative ${handoff.currentAttempt}/${handoff.maxAttempts || DELIVERY_LIMITS.MAX_DELIVERY_ATTEMPTS}). Vous serez notifié avant le créneau.`}
+            </Text>
+            {missionStatus === 'delivery_failed' && (
+              <TouchableOpacity
+                onPress={() => router.push('/logistics/delivery-failed' as never)}
+                style={{ marginTop: 10 }}
+              >
+                <Text style={[styles.awarenessLink, { color: theme.warning }]}>
+                  Voir les options →
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
         {/* Full timeline */}
         <Text style={[styles.timelineTitle, { color: theme.text }]}>Étapes de la mission</Text>
         <View style={styles.timeline}>
@@ -238,6 +273,25 @@ export default function DeliveryTrackingScreen() {
               <Feather name="users" size={18} color="#FFF" />
               <Text style={styles.primaryBtnText}>Voir le groupe de mission</Text>
             </LinearGradient>
+          </TouchableOpacity>
+        )}
+
+        {/* DEV ONLY: Simulate Failure */}
+        {__DEV__ && (
+          <TouchableOpacity
+            onPress={() => {
+              if (!mission) {
+                startMission(mockHandoffTransaction);
+                // Delay slightly to let state update
+                setTimeout(() => failDelivery('buyer_absent', 'Simulated failure from dev menu'), 100);
+              } else {
+                failDelivery('buyer_absent', 'Simulated failure from dev menu');
+              }
+            }}
+            style={{ marginTop: Spacing.xl, padding: Spacing.md, backgroundColor: '#FEF2F2', borderColor: '#EF4444', borderWidth: 1, borderRadius: 8, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: Spacing.sm }}
+          >
+            <Feather name="tool" size={16} color="#EF4444" />
+            <Text style={{ color: '#EF4444', fontFamily: 'Poppins_600SemiBold' }}>[DEV] Simuler un échec de livraison</Text>
           </TouchableOpacity>
         )}
       </ScrollView>

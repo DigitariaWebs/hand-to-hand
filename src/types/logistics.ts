@@ -81,6 +81,26 @@ export type Transporter = {
   phone: string;
 };
 
+// ─── Delivery Failure & Re-delivery ───────────────────────────────────────
+
+export type DeliveryFailureReason =
+  | 'buyer_no_show'        // Acheteur absent au hub
+  | 'transporter_no_show'  // Transporteur absent
+  | 'package_damaged'      // Colis endommagé en route
+  | 'wrong_hub'            // Mauvais hub
+  | 'other';               // Autre raison
+
+export type DeliveryAttempt = {
+  attemptNumber: number;       // 1 = première livraison, 2 = re-livraison
+  scheduledAt: string;         // ISO date
+  hubId: string;
+  status: 'scheduled' | 'in_progress' | 'completed' | 'failed';
+  failureReason?: DeliveryFailureReason;
+  failureNote?: string;
+  completedAt?: string;
+  transporterId?: string;
+};
+
 // ─── QR / Handoff Types ────────────────────────────────────────────────────
 
 export type HandoffRole = 'seller' | 'buyer' | 'transporter_pickup' | 'transporter_delivery';
@@ -108,6 +128,9 @@ export type HandoffStatus =
   | 'buyer_at_hub'
   | 'delivered'
   | 'completed'
+  | 'delivery_failed'
+  | 'redelivery_pending'
+  | 'redelivery_in_progress'
   | 'disputed';
 
 export type HandoffTransaction = {
@@ -144,6 +167,12 @@ export type HandoffTransaction = {
   // Validation timestamps
   pickupValidatedAt?: string;
   deliveryValidatedAt?: string;
+  // ─── Delivery attempts & insurance ────────────────────────────────
+  deliveryAttempts: DeliveryAttempt[];
+  maxAttempts: number; // default 2
+  currentAttempt: number;
+  insuranceTier?: 'basic' | 'premium';
+  insurancePremium?: number; // € paid for premium insurance (0 if basic)
 };
 
 // ─── Delivery History ──────────────────────────────────���──────────────────
